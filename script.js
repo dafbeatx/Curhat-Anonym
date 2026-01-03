@@ -107,14 +107,6 @@ function getIdentity(text) {
 /* =========================
    SEND CURHAT
 ========================= */
-sendBtn.addEventListener("click", sendCurhat);
-textarea.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    sendCurhat();
-  }
-});
-
 async function sendCurhat() {
   initAudio();
 
@@ -132,12 +124,17 @@ async function sendCurhat() {
 
   if (error) {
     console.error(error);
+    alert("Gagal kirim");
     return;
   }
 
   playSendSound();
   textarea.value = "";
+
+  // 🔥 FIX INTI: paksa refresh list
+  loadCurhat();
 }
+
 
 /* =========================
    REACTIONS
@@ -255,6 +252,7 @@ supabase
    INIT
 ========================= */
 loadCurhat();
+
 /* =========================
    THEME TOGGLE (FIX FINAL)
 ========================= */
