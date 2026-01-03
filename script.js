@@ -209,3 +209,32 @@ supabase
    INIT
 ========================= */
 loadCurhat();
+/* =========================
+   THEME TOGGLE (VERCEL SAFE)
+========================= */
+document.addEventListener("DOMContentLoaded", () => {
+  const themeBtn = document.getElementById("theme-toggle");
+  const root = document.documentElement;
+
+  if (!themeBtn) {
+    console.warn("Theme button not found");
+    return;
+  }
+
+  // load saved theme
+  const savedTheme = localStorage.getItem("theme");
+  if (savedTheme) {
+    root.setAttribute("data-theme", savedTheme);
+    themeBtn.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+  }
+
+  // toggle
+  themeBtn.addEventListener("click", () => {
+    const currentTheme =
+      root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+
+    root.setAttribute("data-theme", currentTheme);
+    localStorage.setItem("theme", currentTheme);
+    themeBtn.textContent = currentTheme === "dark" ? "☀️" : "🌙";
+  });
+});
