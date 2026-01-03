@@ -10,10 +10,18 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 /* =========================
    ELEMENTS
 ========================= */
+
 const textarea = document.getElementById("curhat-input");
 const sendBtn = document.getElementById("kirim");
 const list = document.getElementById("list-curhat");
+sendBtn.addEventListener("click", sendCurhat);
 
+textarea.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendCurhat();
+  }
+});
 /* =========================
    AUDIO
 ========================= */
