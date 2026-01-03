@@ -1,96 +1,100 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
 /* =========================
-   SUPABASE
+   SUPABASE CONFIG
 ========================= */
-const supabase = createClient(
-  "https://fwhdjqvtjzesbdcqorsn.supabase.co",
-  "sb_publishable_rwh41NF8iwUaRXL8A6t05g_sK7k5JL3"
-);
+const SUPABASE_URL = "https://fwhdjqvtjzesbdcqorsn.supabase.co";
+const SUPABASE_KEY = "sb_publishable_rwh41NF8iwUaRXL8A6t05g_sK7k5JL3";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* =========================
-   ELEMENT
+   ELEMENTS
 ========================= */
 const textarea = document.getElementById("curhat-input");
-const sendBtn = document.getElementById("kirim");
-const list = document.getElementById("list-curhat");
-const emojiBar = document.getElementById("emoji-bar");
+const sendBtn  = document.getElementById("kirim");
+const list     = document.getElementById("list-curhat");
 
 /* =========================
-   TEXT NORMALIZER
+   STATE
 ========================= */
-function normalizeText(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/gi, " ")
-    .replace(/\b(gw|gua|gue)\b/g, "saya")
-    .replace(/\bbgt\b/g, "banget")
-    .replace(/\bgak\b|\bga\b/g, "tidak")
-    .replace(/\s+/g, " ")
-    .trim();
+const COOLDOWN_MS = 30_000;
+
+/* =========================
+   AUDIO (GENERATED, NO FILE)
+========================= */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSendSound() {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+
+  gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(
+    0.001,
+    audioCtx.currentTime + 0.12
+  );
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.12);
 }
 
 /* =========================
-   MOOD ENGINE
+   MOOD DETECTION (SMARTER)
 ========================= */
-const MOOD_LEXICON = {
-  marah: {
-    words: {
-      marah: 3, kesel: 3, emosi: 3, benci: 3,
-      muak: 3, anjing: 4, bangsat: 4
-    }
-  },
-  sedih: {
-    words: {
-      sedih: 3, capek: 3, lelah: 3, males: 3,
-      kosong: 3, sendiri: 2, "pengen nyerah": 4
-    }
-  },
-  bahagia: {
-    words: {
-      senang: 3, bahagia: 4, lega: 3,
-      akhirnya: 2, tenang: 3, bersyukur: 3
-    }
-  }
-};
-
 function detectMood(text) {
-  const t = normalizeText(text);
-  const score = { marah: 0, sedih: 0, bahagia: 0 };
+  const t = text.toLowerCase();
 
-  for (const mood in MOOD_LEXICON) {
-    for (const key in MOOD_LEXICON[mood].words) {
-      if (t.includes(key)) {
-        score[mood] += MOOD_LEXICON[mood].words[key];
-      }
-    }
-  }
+  if (/anjing|bangsat|kontol|tai|benci|muak|emosi|marah/.test(t)) return "marah";
+  if (/sedih|capek|lelah|nangis|kecewa|hancur|putus/.test(t)) return "sedih";
+  if (/senang|bahagia|lega|syukur|akhirnya|tenang/.test(t)) return "bahagia";
+  return "netral";
+}
 
-  const [topMood, topScore] =
-    Object.entries(score).sort((a, b) => b[1] - a[1])[0];
-
-  return topScore >= 3 ? topMood : "netral";
+function moodMeta(mood) {
+  return {
+    marah:   { emoji: "😡", color: "#ef4444", name: "si pemarah" },
+    sedih:   { emoji: "😢", color: "#3b82f6", name: "si capek hidup" },
+    bahagia: { emoji: "😄", color: "#22c55e", name: "si paling bahagia" },
+    netral:  { emoji: "🙂", color: "#64748b", name: "si anonim" }
+  }[mood];
 }
 
 /* =========================
-   IDENTITY (STABLE)
+   IDENTITY (LOCAL, CONSISTENT)
 ========================= */
-const IDENTITY_KEY = "curhat_identity_final";
-
-const ID_POOL = [
-  { name: "si penasaran", emoji: "👀" },
-  { name: "si kuat", emoji: "💪" },
-  { name: "si bertahan", emoji: "🌱" },
-  { name: "si jujur", emoji: "📝" }
-];
-
-function getIdentity() {
-  const saved = localStorage.getItem(IDENTITY_KEY);
+function getIdentity(text) {
+  const saved = localStorage.getItem("curhat_identity");
   if (saved) return JSON.parse(saved);
 
-  const pick = ID_POOL[Math.floor(Math.random() * ID_POOL.length)];
-  localStorage.setItem(IDENTITY_KEY, JSON.stringify(pick));
-  return pick;
+  const mood = detectMood(text);
+  const meta = moodMeta(mood);
+
+  const identity = {
+    name: meta.name,
+    emoji: meta.emoji,
+    mood
+  };
+
+  localStorage.setItem("curhat_identity", JSON.stringify(identity));
+  return identity;
+}
+
+/* =========================
+   ANTI SPAM
+========================= */
+function canSend() {
+  const last = localStorage.getItem("last_send");
+  return !last || Date.now() - Number(last) > COOLDOWN_MS;
+}
+
+function markSend() {
+  localStorage.setItem("last_send", Date.now());
 }
 
 /* =========================
@@ -105,103 +109,181 @@ textarea.addEventListener("keydown", e => {
   }
 });
 
-emojiBar?.querySelectorAll("button").forEach(btn => {
-  btn.addEventListener("click", () => {
-    textarea.value += btn.textContent;
-    textarea.focus();
-  });
-});
-
 async function sendCurhat() {
   const text = textarea.value.trim();
   if (!text) return;
 
-  const mood = detectMood(text);
-  const identity = getIdentity();
+  if (!canSend()) {
+    alert("Pelan-pelan. Tunggu sebentar.");
+    return;
+  }
 
-  // 🔥 RENDER DENGAN HIGHLIGHT
-  renderOne({
+  const identity = getIdentity(text);
+
+  const { error } = await supabase.from("curhat").insert({
     text,
-    mood,
     name: identity.name,
-    emoji: identity.emoji
-  }, { highlight: true });
+    emoji: identity.emoji,
+    mood: identity.mood
+  });
+
+  if (error) {
+    console.error(error);
+    alert("Gagal mengirim curhat");
+    return;
+  }
+
+  // audio feedback (generated)
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume().then(playSendSound);
+  } else {
+    playSendSound();
+  }
 
   textarea.value = "";
+  markSend();
+}
 
-  await supabase.from("curhat").insert({
-    text,
-    mood,
-    name: identity.name,
-    emoji: identity.emoji
-  });
+/* =========================
+   LOAD CURHAT + REACTIONS
+========================= */
+async function loadCurhat() {
+  const { data, error } = await supabase
+    .from("curhat")
+    .select(`
+      *,
+      reactions ( type )
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  renderCurhat(data);
 }
 
 /* =========================
    RENDER
 ========================= */
-function moodColor(mood) {
-  return {
-    marah: "#ef4444",
-    sedih: "#3b82f6",
-    bahagia: "#22c55e",
-    netral: "#64748b"
-  }[mood];
-}
+function renderCurhat(data) {
+  list.innerHTML = "";
 
-function renderOne(row, options = {}) {
-  const color = moodColor(row.mood);
-  const div = document.createElement("div");
-  div.className = "item";
+  data.forEach(row => {
+    const meta = moodMeta(row.mood || "netral");
+    const reactions = countReactions(row.reactions || []);
+    const reacted = localStorage.getItem(`reacted_${row.id}`);
 
-  div.innerHTML = `
-    <div class="item-header">
-      <div class="avatar" style="background:${color}22">${row.emoji}</div>
-      <div>
-        <div class="name">${row.name}</div>
-        <span class="badge" style="background:${color}">
-          ${row.mood}
-        </span>
+    const div = document.createElement("div");
+    div.className = "item";
+
+    div.innerHTML = `
+      <div class="item-header">
+        <div class="avatar" style="background:${meta.color}22">
+          ${row.emoji || meta.emoji}
+        </div>
+        <div>
+          <div class="name">${row.name || "anonim"}</div>
+          <span class="badge" style="background:${meta.color}">
+            ${row.mood}
+          </span>
+        </div>
       </div>
-    </div>
-    <div class="text">${row.text}</div>
-  `;
 
-  // 🔥 HIGHLIGHT CURHAT SENDIRI
-  if (options.highlight) {
-    div.style.boxShadow = `0 0 0 2px ${color}55, 0 12px 30px ${color}33`;
-    div.style.transition = "box-shadow .4s ease";
+      <div class="text">${escapeHtml(row.text)}</div>
 
-    setTimeout(() => {
-      div.style.boxShadow = "";
-    }, 2500);
-  }
+      <div class="reaction-summary">
+        ${renderReactionSummary(reactions)}
+      </div>
 
-  list.prepend(div);
+      ${reacted ? "" : renderReactionButtons(row.id)}
+    `;
+
+    list.appendChild(div);
+  });
 }
 
 /* =========================
-   LOAD & REALTIME
+   REACTIONS (EMPATIK)
 ========================= */
-async function loadCurhat() {
-  const { data } = await supabase
-    .from("curhat")
-    .select("*")
-    .order("created_at", { ascending: false });
+const REACTION_MAP = {
+  read: "🤍",
+  hug: "🫂",
+  hope: "🌱",
+  pray: "🙏",
+  listen: "🕯️"
+};
 
-  list.innerHTML = "";
-  data.forEach(row => renderOne(row));
+function renderReactionButtons(curhatId) {
+  return `
+    <div class="reaction-bar">
+      ${Object.entries(REACTION_MAP)
+        .map(
+          ([type, emoji]) =>
+            `<button onclick="sendReaction('${curhatId}','${type}')">${emoji}</button>`
+        )
+        .join("")}
+    </div>
+  `;
 }
 
+async function sendReaction(curhatId, type) {
+  if (localStorage.getItem(`reacted_${curhatId}`)) return;
+
+  const { error } = await supabase.from("reactions").insert({
+    curhat_id: curhatId,
+    type
+  });
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  localStorage.setItem(`reacted_${curhatId}`, "1");
+  loadCurhat();
+}
+
+window.sendReaction = sendReaction;
+
+function countReactions(rows) {
+  const result = {};
+  rows.forEach(r => {
+    result[r.type] = (result[r.type] || 0) + 1;
+  });
+  return result;
+}
+
+function renderReactionSummary(counts) {
+  return Object.entries(counts)
+    .map(([type, count]) => `${REACTION_MAP[type]} ${count}`)
+    .join(" · ");
+}
+
+/* =========================
+   UTILS
+========================= */
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/* =========================
+   REALTIME
+========================= */
 supabase
   .channel("realtime-curhat")
   .on(
     "postgres_changes",
     { event: "INSERT", schema: "public", table: "curhat" },
-    payload => {
-      // ❌ JANGAN highlight realtime orang lain
-      renderOne(payload.new);
-    }
+    loadCurhat
+  )
+  .on(
+    "postgres_changes",
+    { event: "INSERT", schema: "public", table: "reactions" },
+    loadCurhat
   )
   .subscribe();
 
@@ -210,31 +292,24 @@ supabase
 ========================= */
 loadCurhat();
 /* =========================
-   THEME TOGGLE (VERCEL SAFE)
+   THEME TOGGLE (FIX FINAL)
 ========================= */
-document.addEventListener("DOMContentLoaded", () => {
-  const themeBtn = document.getElementById("theme-toggle");
-  const root = document.documentElement;
+const themeFab = document.querySelector(".theme-fab");
+const root = document.documentElement;
 
-  if (!themeBtn) {
-    console.warn("Theme button not found");
-    return;
-  }
+// load saved theme
+const savedTheme = localStorage.getItem("theme");
+if (savedTheme) {
+  root.setAttribute("data-theme", savedTheme);
+  themeFab.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+}
 
-  // load saved theme
-  const savedTheme = localStorage.getItem("theme");
-  if (savedTheme) {
-    root.setAttribute("data-theme", savedTheme);
-    themeBtn.textContent = savedTheme === "dark" ? "☀️" : "🌙";
-  }
+themeFab.addEventListener("click", () => {
+  const current = root.getAttribute("data-theme");
+  const next = current === "dark" ? "light" : "dark";
 
-  // toggle
-  themeBtn.addEventListener("click", () => {
-    const currentTheme =
-      root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  root.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
 
-    root.setAttribute("data-theme", currentTheme);
-    localStorage.setItem("theme", currentTheme);
-    themeBtn.textContent = currentTheme === "dark" ? "☀️" : "🌙";
-  });
+  themeFab.textContent = next === "dark" ? "☀️" : "🌙";
 });
