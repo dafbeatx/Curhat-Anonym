@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <title>Curhat Anonim</title>
+
+  <!-- RESPONSIVE -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- META SHARE (WA / SOSMED) -->
+  <meta property="og:title" content="Curhat Anonim" />
+  <meta property="og:description" content="Tempat aman untuk meluapkan isi hati. Tanpa akun. Tanpa nama. Tanpa jejak." />
+  <meta property="og:image" content="assets/thumbnail.png" />
+  <meta property="og:type" content="website" />
+
+  <!-- TWITTER / FALLBACK -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="foto.png" />
+
+  <!-- FONT -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- STYLE -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="page">
+
+    <main class="container">
+
+      <header class="header">
+        <div class="header-title">
+          <h1>Curhat Anonim</h1>
+          <p class="hint">
+            Tempat aman untuk meluapkan isi hati.<br />
+            Tanpa akun. Tanpa nama. Tanpa jejak.
+          </p>
+        </div>
+      </header>
+
+      <section class="input-area">
+
+        <div class="emoji-bar" id="emoji-bar">
+          <button type="button">😡</button>
+          <button type="button">😢</button>
+          <button type="button">🙂</button>
+          <button type="button">😄</button>
+          <button type="button">😭</button>
+        </div>
+
+        <textarea
+          id="curhat-input"
+          placeholder="Tulis curhatanmu di sini..."
+          autocomplete="off"
+        ></textarea>
+
+        <button id="kirim" class="btn-primary">
+          Kirim Curhat
+        </button>
+
+      </section>
+
+      <section id="list-curhat" class="list-curhat"></section>
+
+    </main>
+
+    <footer class="footer">
+      <p class="footer-text">
+        Kalau tempat ini ngebantu kamu, dukung pengembangannya 
+      </p>
+      <a
+        href="https://saweria.co/USERNAME_SAWERIA_LU"
+        target="_blank"
+        rel="noopener"
+        class="footer-link"
+      >
+        ☕ Dukung via Saweria 🤍
+      </a>
+    </footer>
+
+    <!-- THEME TOGGLE -->
+    <button
+      class="theme-fab"
+      id="theme-toggle"
+      aria-label="Ganti tema"
+      title="Ganti tema"
+    >
+      🌙
+    </button>
+
+  </div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
