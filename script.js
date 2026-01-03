@@ -255,3 +255,25 @@ supabase
    INIT
 ========================= */
 loadCurhat();
+/* =========================
+   THEME TOGGLE (FIX FINAL)
+========================= */
+const themeFab = document.querySelector(".theme-fab");
+const root = document.documentElement;
+
+// load saved theme
+const savedTheme = localStorage.getItem("theme");
+if (savedTheme) {
+  root.setAttribute("data-theme", savedTheme);
+  themeFab.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+}
+
+themeFab.addEventListener("click", () => {
+  const current = root.getAttribute("data-theme");
+  const next = current === "dark" ? "light" : "dark";
+
+  root.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
+
+  themeFab.textContent = next === "dark" ? "☀️" : "🌙";
+});
