@@ -1,24 +1,19 @@
-/* =========================
+/* =====================================================
    RESET
-========================= */
-* { box-sizing: border-box; }
-
-/* =========================
-   BASE
-========================= */
-html, body {
-  margin: 0;
-  padding: 0;
-  font-family: 'Inter', system-ui, sans-serif;
-  background: #f6f7f9;
-  color: #1f2937;
-  transition: background .25s ease, color .25s ease;
+   (JANGAN DIUBAH)
+===================================================== */
+* {
+  box-sizing: border-box;
 }
 
-/* =========================
-   COLOR THEME (RED)
-========================= */
+/* =====================================================
+   THEME VARIABLES (INTI DARK / LIGHT)
+   👉 Kalau mau ubah warna global, DISINI
+===================================================== */
 :root {
+  --bg: #f6f7f9;
+  --text: #1f2937;
+
   --primary: #dc2626;
   --primary-hover: #b91c1c;
   --primary-soft: rgba(220, 38, 38, 0.35);
@@ -26,15 +21,30 @@ html, body {
 }
 
 html[data-theme="dark"] {
+  --bg: #020617;
+  --text: #e5e7eb;
+
   --primary: #ef4444;
   --primary-hover: #dc2626;
   --primary-soft: rgba(239, 68, 68, 0.4);
   --primary-glow: rgba(239, 68, 68, 0.55);
 }
 
-/* =========================
-   PAGE
-========================= */
+/* =====================================================
+   BASE PAGE
+===================================================== */
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  transition: background .25s ease, color .25s ease;
+}
+
+/* =====================================================
+   LAYOUT
+===================================================== */
 .page {
   min-height: 100vh;
   display: flex;
@@ -48,9 +58,9 @@ html[data-theme="dark"] {
   flex: 1;
 }
 
-/* =========================
+/* =====================================================
    HEADER
-========================= */
+===================================================== */
 .header {
   margin-bottom: 14px;
   text-align: center;
@@ -79,9 +89,13 @@ html[data-theme="dark"] {
   color: #6b7280;
 }
 
-/* =========================
-   INPUT AREA
-========================= */
+html[data-theme="dark"] .hint {
+  color: #cbd5f5;
+}
+
+/* =====================================================
+   INPUT AREA (TEMPAT CURHAT)
+===================================================== */
 .input-area {
   background: #ffffff;
   padding: 20px;
@@ -90,6 +104,14 @@ html[data-theme="dark"] {
   margin-top: 8px;
 }
 
+html[data-theme="dark"] .input-area {
+  background: #020617;
+  border: 1px solid #1e293b;
+}
+
+/* =====================================================
+   TEXTAREA (KRITIS – JANGAN GRADIENT DI DARK MODE)
+===================================================== */
 textarea {
   width: 100%;
   min-height: 120px;
@@ -98,8 +120,10 @@ textarea {
   border: 1px solid #d1d5db;
   font-size: 14px;
   line-height: 1.6;
+  color: #111827;
   background: #ffffff;
   outline: none;
+  transition: border-color .25s ease, box-shadow .25s ease;
 }
 
 textarea:focus {
@@ -107,14 +131,25 @@ textarea:focus {
   box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
-/* =========================
+html[data-theme="dark"] textarea {
+  background: #020617; /* ⛔ NO GRADIENT */
+  color: #ffffff;
+  border-color: #1e293b;
+}
+
+html[data-theme="dark"] textarea:focus {
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+/* =====================================================
    EMOJI BAR
-========================= */
+===================================================== */
 .emoji-bar {
   display: flex;
   justify-content: center;
   gap: 10px;
-  margin: 12px 0;
+  margin: 12px 0 14px;
+  flex-wrap: wrap;
 }
 
 .emoji-bar button {
@@ -127,9 +162,13 @@ textarea:focus {
   cursor: pointer;
 }
 
-/* =========================
+html[data-theme="dark"] .emoji-bar button {
+  background: #1e293b;
+}
+
+/* =====================================================
    BUTTON KIRIM
-========================= */
+===================================================== */
 .btn-primary {
   width: 100%;
   margin-top: 10px;
@@ -137,14 +176,14 @@ textarea:focus {
   border-radius: 14px;
   border: none;
   background: linear-gradient(180deg, var(--primary), var(--primary-hover));
-  color: #fff;
+  color: #ffffff;
   font-weight: 600;
   cursor: pointer;
 }
 
-/* =========================
+/* =====================================================
    LIST & CARD
-========================= */
+===================================================== */
 .list-curhat {
   display: flex;
   flex-direction: column;
@@ -158,10 +197,18 @@ textarea:focus {
   border-radius: 18px;
 }
 
+html[data-theme="dark"] .item {
+  background: #020617;
+  border: 1px solid #1e293b;
+}
+
+/* =====================================================
+   CARD CONTENT
+===================================================== */
 .item-header {
   display: flex;
-  gap: 12px;
   align-items: center;
+  gap: 12px;
 }
 
 .avatar {
@@ -182,7 +229,7 @@ textarea:focus {
   font-size: 11px;
   padding: 2px 10px;
   border-radius: 999px;
-  color: #fff;
+  color: #ffffff;
 }
 
 .text {
@@ -191,9 +238,9 @@ textarea:focus {
   line-height: 1.6;
 }
 
-/* =========================
+/* =====================================================
    REACTIONS
-========================= */
+===================================================== */
 .reaction-bar {
   display: flex;
   gap: 10px;
@@ -212,9 +259,14 @@ textarea:focus {
   color: #6b7280;
 }
 
-/* =========================
-   CARD ACTIONS (ICON ONLY)
-========================= */
+html[data-theme="dark"] .reaction-summary {
+  color: #cbd5f5;
+}
+
+/* =====================================================
+   CARD ACTIONS (SHARE ICONS)
+   👉 Kalau mau ubah icon / posisi, DISINI
+===================================================== */
 .card-actions {
   display: flex;
   justify-content: flex-end;
@@ -223,58 +275,66 @@ textarea:focus {
 }
 
 .icon-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: transparent;
+  all: unset;
+  width: 34px;
+  height: 34px;
   cursor: pointer;
-  opacity: 0.55;
-  transition: opacity .2s ease, transform .15s ease;
+  opacity: 0.6;
+  display: grid;
+  place-items: center;
 }
 
 .icon-btn:hover {
   opacity: 1;
-  transform: scale(1.1);
 }
 
-.icon-btn::before {
-  content: "";
-  display: block;
-  width: 20px;
-  height: 20px;
-  margin: auto;
-  background-color: #64748b;
-  mask-size: contain;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
+/* =====================================================
+   FOOTER
+===================================================== */
+.footer {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+  padding: 10px 14px 8px;
 }
 
-.icon-btn.share::before {
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke='black' fill='none' stroke-width='1.8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M7.5 12h9m0 0L12 7.5M16.5 12L12 16.5'/%3E%3C/svg%3E");
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke='black' fill='none' stroke-width='1.8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M7.5 12h9m0 0L12 7.5M16.5 12L12 16.5'/%3E%3C/svg%3E");
+html[data-theme="dark"] .footer {
+  background: #020617;
+  border-top-color: #1e293b;
 }
 
-.icon-btn.image::before {
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke='black' fill='none' stroke-width='1.8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M12 3v12m0 0l-4-4m4 4l4-4M4 21h16'/%3E%3C/svg%3E");
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke='black' fill='none' stroke-width='1.8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M12 3v12m0 0l-4-4m4 4l4-4M4 21h16'/%3E%3C/svg%3E");
+/* =====================================================
+   FLOATING THEME TOGGLE
+===================================================== */
+.theme-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 112px;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background: #ffffff;
+  display: grid;
+  place-items: center;
 }
 
-/* =========================
-   DARK MODE
-========================= */
-html[data-theme="dark"] body {
+html[data-theme="dark"] .theme-fab {
   background: #020617;
   color: #e5e7eb;
 }
 
-html[data-theme="dark"] .item {
-  background: #020617;
-  border: 1px solid #1e293b;
-}
+/* =====================================================
+   MOBILE
+===================================================== */
+@media (max-width: 480px) {
+  .header-title h1 {
+    font-size: 26px;
+  }
 
-html[data-theme="dark"] .icon-btn::before {
-  background-color: #cbd5f5;
+  .container {
+    padding: 28px 14px 180px;
+  }
 }
