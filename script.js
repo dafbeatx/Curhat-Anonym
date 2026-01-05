@@ -178,9 +178,18 @@ function renderCurhat(rows) {
         </div>
 
         <div class="card-actions">
-          <button onclick="shareLink('${row.id}')">🔗</button>
-          <button onclick="shareAsImage('${row.id}')">🖼️</button>
-        </div>
+  <button
+    class="icon-btn share"
+    aria-label="Bagikan"
+    onclick="shareLink('${row.id}')">
+  </button>
+
+  <button
+    class="icon-btn image"
+    aria-label="Simpan sebagai gambar"
+    onclick="shareAsImage('${row.id}')">
+  </button>
+</div>
       </div>
     `;
   });
