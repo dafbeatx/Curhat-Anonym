@@ -151,26 +151,159 @@ function renderCurhat(rows) {
           ).join("")}
         </div>`}
 
-        <div class="card-actions">
-          <button class="share-btn" onclick="shareCurhat('${r.id}')">🔗 Bagikan</button>
-        </div>
+<div class="card-actions">
+  <button class="share-btn" onclick="shareCurhat('${row.id}')">🔗 Bagikan</button>
+  <button class="share-btn" onclick="shareAsImage('${row.id}')">🖼️ Gambar</button>
+</div>
       </div>`;
   });
 }
 
-/* =========================
-   SHARE
-========================= */
 async function shareCurhat(id) {
   const url = `${location.origin}${location.pathname}#curhat-${id}`;
-  if (navigator.share) {
-    await navigator.share({ title:"Curhat Anonim", url });
-  } else {
+  const text = encodeURIComponent("Curhatan anonim yang mungkin relate.");
+async function shareAsImage(curhatId) {
+  const el = document.getElementById(`curhat-${curhatId}`);
+  if (!el) return alert("Curhat tidak ditemukan");
+
+  const text = el.innerText.trim();
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  // ukuran canvas
+  const padding = 40;
+  const maxWidth = 520;
+  const lineHeight = 26;
+  const fontSize = 16;
+  const font = `${fontSize}px Inter, sans-serif`;
+
+  ctx.font = font;
+
+  // word wrap
+  const words = text.split(" ");
+  let lines = [];
+  let line = "";
+
+  words.forEach(word => {
+    const test = line + word + " ";
+    if (ctx.measureText(test).width > maxWidth - padding * 2) {
+      lines.push(line);
+      line = word + " ";
+    } else {
+      line = test;
+    }
+  });
+  lines.push(line);
+
+  const height =
+    padding * 2 +
+    lines.length * lineHeight +
+    50;
+
+  canvas.width = maxWidth;
+  canvas.height = height;
+
+  // background
+  ctx.fillStyle = "#020617";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // subtle grid
+  ctx.strokeStyle = "rgba(255,255,255,0.05)";
+  for (let i = 0; i < canvas.width; i += 32) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, canvas.height);
+    ctx.stroke();
+  }
+  for (let i = 0; i < canvas.height; i += 32) {
+    ctx.beginPath();
+    ctx.moveTo(0, i);
+    ctx.lineTo(canvas.width, i);
+    ctx.stroke();
+  }
+
+  // text
+  ctx.fillStyle = "#ffffff";
+  ctx.font = font;
+
+  lines.forEach((l, i) => {
+    ctx.fillText(l, padding, padding + i * lineHeight);
+  });
+
+  // watermark
+  ctx.font = "12px Inter, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.fillText(
+    "Curhat Anonim",
+    padding,
+    canvas.height - 20
+  );
+
+  const imageUrl = canvas.toDataURL("image/png");
+
+  // share / download
+  if (navigator.share && navigator.canShare) {
+    const blob = await (await fetch(imageUrl)).blob();
+    const file = new File([blob], "curhat.png", { type: "image/png" });
+
+    if (navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: "Curhat Anonim"
+      });
+      return;
+    }
+  }
+
+  // fallback: download
+  const a = document.createElement("a");
+  a.href = imageUrl;
+  a.download = "curhat.png";
+  a.click();
+}
+
+window.shareAsImage = shareAsImage;
+
+  // MOBILE SHARE (Android / iOS)
+  if (navigator.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    try {
+      await navigator.share({
+        title: "Curhat Anonim",
+        text: "Curhatan anonim yang mungkin relate.",
+        url
+      });
+      return;
+    } catch {
+      // user cancel
+    }
+  }
+
+  // DESKTOP FALLBACK (SELALU KELIATAN)
+  const popup = document.createElement("div");
+  popup.className = "share-popup";
+  popup.innerHTML = `
+    <div class="share-box">
+      <p>Bagikan curhatan ini</p>
+      <a href="https://wa.me/?text=${text}%20${encodeURIComponent(url)}" target="_blank">WhatsApp</a>
+      <a href="https://t.me/share/url?url=${encodeURIComponent(url)}&text=${text}" target="_blank">Telegram</a>
+      <a href="https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${text}" target="_blank">X / Twitter</a>
+      <button id="copy-link">Salin Link</button>
+      <button id="close-share">Tutup</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+
+  document.getElementById("copy-link").onclick = async () => {
     await navigator.clipboard.writeText(url);
     alert("Link disalin");
-  }
+  };
+
+  document.getElementById("close-share").onclick = () => popup.remove();
 }
+
 window.shareCurhat = shareCurhat;
+
 
 /* =========================
    THEME

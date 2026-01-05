@@ -504,3 +504,7 @@ html[data-theme="dark"] .share-box button {
   background: #1e293b;
   color: #e5e7eb;
 }
+.card-actions {
+  display: flex;
+  gap: 8px;
+}

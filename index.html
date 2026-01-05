@@ -1,111 +1,62 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="light">
+<html lang="id">
 <head>
   <meta charset="UTF-8" />
   <title>Curhat Anonim</title>
-
-  <!-- RESPONSIVE -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<!-- OPEN GRAPH (WA + FACEBOOK) -->
-<meta property="og:title" content="Curhat Anonim" />
-<meta property="og:description" content="Tempat aman untuk meluapkan isi hati. Tanpa akun. Tanpa nama. Tanpa jejak." />
-<meta property="og:type" content="website" />
-<meta property="og:url" content="https://curhat-anonym.vercel.app/" />
+  <!-- META SHARE -->
+  <meta property="og:title" content="Curhat Anonim" />
+  <meta property="og:description" content="Tempat aman buat meluapkan isi hati, tanpa identitas." />
+  <meta property="og:image" content="./assets/thumbnail.png" />
+  <meta property="og:type" content="website" />
 
-<meta property="og:image" content="https://curhat-anonym.vercel.app//assets/thumbnail.png" />
-<meta property="og:image:secure_url" content="https://curhat-anonym.vercel.app//assets/thumbnail.png" />
-<meta property="og:image:type" content="image/png" />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
-
-<!-- FACEBOOK -->
-<meta property="fb:app_id" content="966242223397117" />
-
-<!-- TWITTER (BIAR IKUT) -->
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:image" content="https://curhat-anonym.vercel.app/assets/thumbnail.png" />
-
-
-  <!-- FONT -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
-    rel="stylesheet"
-  />
-
-  <!-- STYLE -->
   <link rel="stylesheet" href="style.css" />
 </head>
-
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <body>
-  <div class="page">
 
-    <main class="container">
+<div class="page">
+  <main class="container">
 
-      <header class="header">
-        <div class="header-title">
-          <h1>Curhat Anonim</h1>
-          <p class="hint">
-            Tempat aman untuk meluapkan isi hati.<br />
-            Tanpa akun. Tanpa nama. Tanpa jejak.
-          </p>
-        </div>
-      </header>
-
-      <section class="input-area">
-
-        <div class="emoji-bar" id="emoji-bar">
-          <button type="button">😡</button>
-          <button type="button">😢</button>
-          <button type="button">🙂</button>
-          <button type="button">😄</button>
-          <button type="button">😭</button>
-        </div>
-
-        <textarea
-          id="curhat-input"
-          placeholder="Tulis curhatanmu di sini..."
-          autocomplete="off"
-        ></textarea>
-
-        <button id="kirim" class="btn-primary">
-          Kirim Curhat
-        </button>
-
-      </section>
-
-      <section id="list-curhat" class="list-curhat"></section>
-
-    </main>
-
-    <footer class="footer">
-      <p class="footer-text">
-        Kalau tempat ini ngebantu kamu, dukung pengembangannya 
+    <header class="header">
+      <div class="header-title">
+        <h1>Curhat Anonim</h1>
+      </div>
+      <p class="hint">
+        Tempat aman buat meluapkan isi hati.<br>
+        Tanpa akun. Tanpa nama. Tanpa jejak.
       </p>
-      <a
-        href="https://saweria.co/dafbeatx"
-        target="_blank"
-        rel="noopener"
-        class="footer-link"
-      >
-        ☕ Dukung via Saweria 🤍
-      </a>
-    </footer>
+    </header>
 
-    <!-- THEME TOGGLE -->
-    <button
-      class="theme-fab"
-      id="theme-toggle"
-      aria-label="Ganti tema"
-      title="Ganti tema"
-    >
-      🌙
-    </button>
+    <!-- INPUT -->
+    <section class="input-area">
+      <div class="emoji-bar">
+        <button>😡</button>
+        <button>😢</button>
+        <button>😄</button>
+        <button>😮‍💨</button>
+        <button>🥲</button>
+      </div>
 
-  </div>
+      <textarea id="curhat-input" placeholder="Tulis curhatanmu di sini..."></textarea>
+      <button id="kirim" class="btn-primary">Kirim</button>
+    </section>
 
-  <script type="module" src="script.js"></script>
+    <!-- LIST -->
+    <section id="list-curhat" class="list-curhat"></section>
+
+  </main>
+
+  <footer class="footer">
+    <p class="footer-text">Kalau tempat ini ngebantu kamu</p>
+    <a class="footer-link" href="https://saweria.co/USERNAME_LU" target="_blank">❤️ Dukung lewat Saweria</a>
+  </footer>
+</div>
+
+<button class="theme-fab">🌙</button>
+
+<script type="module" src="script.js"></script>
 </body>
 </html>
