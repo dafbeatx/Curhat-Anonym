@@ -14,8 +14,22 @@ const supabase = createClient(
 const textarea = document.getElementById("curhat-input");
 const sendBtn = document.getElementById("kirim");
 const list = document.getElementById("list-curhat");
-const root = document.documentElement;
 const themeFab = document.querySelector(".theme-fab");
+const root = document.documentElement;
+
+/* =========================
+   THEME (DARK / LIGHT)
+========================= */
+const savedTheme = localStorage.getItem("theme") || "light";
+root.setAttribute("data-theme", savedTheme);
+if (themeFab) themeFab.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+
+themeFab?.addEventListener("click", () => {
+  const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  root.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
+  themeFab.textContent = next === "dark" ? "☀️" : "🌙";
+});
 
 /* =========================
    EVENT
@@ -32,31 +46,26 @@ textarea.addEventListener("keydown", e => {
    AUDIO
 ========================= */
 let audioCtx;
-function initAudio() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === "suspended") audioCtx.resume();
-}
 function playSendSound() {
-  if (!audioCtx) return;
-  const o = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  o.frequency.value = 220;
-  g.gain.value = 0.12;
-  o.connect(g);
-  g.connect(audioCtx.destination);
-  o.start();
-  o.stop(audioCtx.currentTime + 0.12);
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.frequency.value = 220;
+  gain.gain.value = 0.12;
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.12);
 }
 
 /* =========================
    EMOJI BAR
 ========================= */
 document.querySelectorAll(".emoji-bar button").forEach(btn => {
-  btn.onclick = () => {
-    initAudio();
+  btn.addEventListener("click", () => {
     textarea.value += btn.textContent;
     textarea.focus();
-  };
+  });
 });
 
 /* =========================
@@ -64,17 +73,18 @@ document.querySelectorAll(".emoji-bar button").forEach(btn => {
 ========================= */
 function detectMood(text) {
   const t = text.toLowerCase();
-  if (/anjing|bangsat|marah|emosi/.test(t)) return "marah";
-  if (/sedih|capek|nangis/.test(t)) return "sedih";
-  if (/senang|bahagia|syukur/.test(t)) return "bahagia";
+  if (/anjing|bangsat|emosi|marah/.test(t)) return "marah";
+  if (/sedih|capek|nangis|lelah/.test(t)) return "sedih";
+  if (/senang|bahagia|lega|syukur/.test(t)) return "bahagia";
   return "netral";
 }
+
 function moodMeta(mood) {
   return {
-    marah: { emoji: "😡", color: "#ef4444", name: "si pemarah" },
-    sedih: { emoji: "😢", color: "#3b82f6", name: "si capek hidup" },
+    marah:   { emoji: "😡", color: "#ef4444", name: "si pemarah" },
+    sedih:   { emoji: "😢", color: "#3b82f6", name: "si capek hidup" },
     bahagia: { emoji: "😄", color: "#22c55e", name: "si paling bahagia" },
-    netral: { emoji: "🙂", color: "#64748b", name: "si anonim" }
+    netral:  { emoji: "🙂", color: "#64748b", name: "si anonim" }
   }[mood];
 }
 
@@ -82,7 +92,6 @@ function moodMeta(mood) {
    SEND CURHAT
 ========================= */
 async function sendCurhat() {
-  initAudio();
   const text = textarea.value.trim();
   if (!text) return;
 
@@ -96,7 +105,10 @@ async function sendCurhat() {
     name: meta.name
   });
 
-  if (error) return alert("Gagal kirim");
+  if (error) {
+    alert("Gagal mengirim curhat");
+    return;
+  }
 
   playSendSound();
   textarea.value = "";
@@ -106,11 +118,18 @@ async function sendCurhat() {
 /* =========================
    REACTIONS
 ========================= */
-const REACTION_MAP = { read:"🤍", hug:"🫂", hope:"🌱", pray:"🙏", listen:"🕯️" };
+const REACTIONS = {
+  read: "🤍",
+  hug: "🫂",
+  hope: "🌱",
+  pray: "🙏",
+  listen: "🕯️"
+};
+
 window.sendReaction = async (id, type) => {
   if (localStorage.getItem(`reacted_${id}`)) return;
-  await supabase.from("reactions").insert({ curhat_id:id, type });
-  localStorage.setItem(`reacted_${id}`, 1);
+  await supabase.from("reactions").insert({ curhat_id: id, type });
+  localStorage.setItem(`reacted_${id}`, "1");
   loadCurhat();
 };
 
@@ -121,51 +140,132 @@ async function loadCurhat() {
   const { data } = await supabase
     .from("curhat")
     .select("*, reactions(type)")
-    .order("created_at", { ascending:false });
+    .order("created_at", { ascending: false });
 
   renderCurhat(data || []);
 }
 
 function renderCurhat(rows) {
   list.innerHTML = "";
-  rows.forEach(r => {
-    const meta = moodMeta(r.mood);
-    const reacted = localStorage.getItem(`reacted_${r.id}`);
+
+  rows.forEach(row => {
+    const meta = moodMeta(row.mood);
     const counts = {};
-    (r.reactions||[]).forEach(x => counts[x.type]=(counts[x.type]||0)+1);
+    (row.reactions || []).forEach(r => {
+      counts[r.type] = (counts[r.type] || 0) + 1;
+    });
 
     list.innerHTML += `
-      <div class="item" id="card-${r.id}">
+      <div class="item" id="card-${row.id}">
         <div class="item-header">
-          <div class="avatar">${meta.emoji}</div>
+          <div class="avatar">${row.emoji}</div>
           <div>
-            <div class="name">${r.name}</div>
-            <span class="badge" style="background:${meta.color}">${r.mood}</span>
+            <div class="name">${row.name}</div>
+            <span class="badge" style="background:${meta.color}">${row.mood}</span>
           </div>
         </div>
 
-        <div class="text">${escapeHtml(r.text)}</div>
+        <div class="text" id="curhat-${row.id}">${escapeHtml(row.text)}</div>
 
         <div class="reaction-summary">
-          ${Object.entries(counts).map(([t,c])=>`${REACTION_MAP[t]} ${c}`).join(" · ")}
+          ${Object.entries(counts).map(([t,c]) => `${REACTIONS[t]} ${c}`).join(" · ")}
         </div>
 
-        ${reacted?"":`
         <div class="reaction-bar">
-          ${Object.entries(REACTION_MAP).map(([t,e])=>
-            `<button onclick="sendReaction('${r.id}','${t}')">${e}</button>`
-          ).join("")}
-        </div>`}
+          ${Object.entries(REACTIONS)
+            .map(([t,e]) => `<button onclick="sendReaction('${row.id}','${t}')">${e}</button>`)
+            .join("")}
+        </div>
 
         <div class="card-actions">
-          <button class="icon-btn share" onclick="shareAsImage('${r.id}')"></button>
-          <button class="icon-btn image" onclick="downloadAsImage('${r.id}')"></button>
+          <button class="icon-btn share" onclick="shareLink('${row.id}')"></button>
+          <button class="icon-btn image" onclick="shareAsImage('${row.id}')"></button>
         </div>
       </div>
     `;
   });
 }
 
+/* =========================
+   SHARE LINK
+========================= */
+window.shareLink = async id => {
+  const url = `${location.origin}${location.pathname}#curhat-${id}`;
+  if (navigator.share) {
+    await navigator.share({ title: "Curhat Anonim", url });
+  } else {
+    await navigator.clipboard.writeText(url);
+    alert("Link disalin");
+  }
+};
+
+/* =========================
+   SHARE AS IMAGE (THEME AWARE)
+========================= */
+window.shareAsImage = async id => {
+  const card = document.getElementById(`card-${id}`);
+  if (!card) return;
+
+  const text = card.querySelector(".text").innerText;
+  const theme = document.documentElement.getAttribute("data-theme");
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  const width = 560;
+  const padding = 32;
+  const lineHeight = 26;
+  const fontSize = 16;
+
+  ctx.font = `${fontSize}px Inter, sans-serif`;
+
+  const words = text.split(" ");
+  let lines = [];
+  let line = "";
+
+  words.forEach(w => {
+    const test = line + w + " ";
+    if (ctx.measureText(test).width > width - padding * 2) {
+      lines.push(line);
+      line = w + " ";
+    } else line = test;
+  });
+  lines.push(line);
+
+  const height = padding * 2 + lines.length * lineHeight + 48;
+  canvas.width = width;
+  canvas.height = height;
+
+  // Background & text color sesuai theme
+  if (theme === "dark") {
+    ctx.fillStyle = "#020617";
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = "#ffffff";
+  } else {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = "#020617";
+  }
+
+  lines.forEach((l, i) => {
+    ctx.fillText(l, padding, padding + i * lineHeight);
+  });
+
+  ctx.font = "12px Inter, sans-serif";
+  ctx.globalAlpha = 0.6;
+  ctx.fillText("Curhat Anonim", padding, height - 18);
+
+  const img = canvas.toDataURL("image/png");
+
+  const a = document.createElement("a");
+  a.href = img;
+  a.download = "curhat.png";
+  a.click();
+};
+
+/* =========================
+   UTILS
+========================= */
 function escapeHtml(text) {
   const d = document.createElement("div");
   d.textContent = text;
@@ -173,155 +273,11 @@ function escapeHtml(text) {
 }
 
 /* =========================
-   SHARE AS IMAGE (WHATSAPP STYLE)
-========================= */
-async function createImageFromCard(card) {
-  const dark = root.getAttribute("data-theme") === "dark";
-
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-
-  const width = 540;
-  const padding = 32;
-  const textEl = card.querySelector(".text");
-  const text = textEl.innerText.trim();
-
-  ctx.font = "16px Inter, sans-serif";
-  const words = text.split(" ");
-  let lines = [], line = "";
-
-  words.forEach(w => {
-    const test = line + w + " ";
-    if (ctx.measureText(test).width > width - padding*2) {
-      lines.push(line);
-      line = w + " ";
-    } else line = test;
-  });
-  lines.push(line);
-
-  const height = padding*2 + lines.length*26 + 80;
-  canvas.width = width;
-  canvas.height = height;
-
-  // background
-  ctx.fillStyle = dark ? "#020617" : "#ffffff";
-  ctx.fillRect(0,0,width,height);
-
-  // subtle grid
-  ctx.strokeStyle = dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)";
-  for (let i=0;i<width;i+=32){
-    ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,height); ctx.stroke();
-  }
-  for (let i=0;i<height;i+=32){
-    ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(width,i); ctx.stroke();
-  }
-
-  // text
-  ctx.fillStyle = dark ? "#ffffff" : "#111827";
-  ctx.font = "16px Inter, sans-serif";
-  lines.forEach((l,i)=>{
-    ctx.fillText(l, padding, padding + i*26);
-  });
-
-  // watermark
-  ctx.font = "12px Inter, sans-serif";
-  ctx.fillStyle = dark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)";
-  ctx.fillText("Curhat Anonim", padding, height-20);
-
-  return canvas;
-}
-
-window.shareAsImage = async (id) => {
-  const card = document.getElementById(`card-${id}`);
-  if (!card) return;
-
-  const canvas = await createImageFromCard(card);
-  const blob = await new Promise(r => canvas.toBlob(r, "image/png"));
-  const file = new File([blob], "curhat.png", { type:"image/png" });
-
-  if (navigator.share && navigator.canShare({ files:[file] })) {
-    await navigator.share({ files:[file], title:"Curhat Anonim" });
-  } else {
-    downloadBlob(blob);
-  }
-};
-
-window.downloadAsImage = async (id) => {
-  const card = document.getElementById(`card-${id}`);
-  const canvas = await createImageFromCard(card);
-  canvas.toBlob(downloadBlob);
-};
-
-function downloadBlob(blob) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "curhat.png";
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-async function shareCardAsImage(cardId) {
-  const card = document.getElementById(`card-${cardId}`);
-  if (!card) return;
-
-  // clone card supaya ga ganggu UI
-  const clone = card.cloneNode(true);
-  clone.style.position = "fixed";
-  clone.style.left = "-9999px";
-  clone.style.top = "0";
-  clone.style.width = card.offsetWidth + "px";
-
-  document.body.appendChild(clone);
-
-  // render pakai html2canvas
-  const canvas = await html2canvas(clone, {
-    backgroundColor: null,
-    scale: 2,
-    useCORS: true
-  });
-
-  document.body.removeChild(clone);
-
-  canvas.toBlob(async blob => {
-    const file = new File([blob], "curhat.png", { type: "image/png" });
-
-    // mobile share (WhatsApp, IG, dll)
-    if (navigator.share && navigator.canShare({ files: [file] })) {
-      await navigator.share({
-        files: [file],
-        title: "Curhat Anonim"
-      });
-    } else {
-      // fallback download
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "curhat.png";
-      a.click();
-      URL.revokeObjectURL(a.href);
-    }
-  });
-}
-/* =========================
-   THEME
-========================= */
-const savedTheme = localStorage.getItem("theme");
-if (savedTheme) {
-  root.setAttribute("data-theme", savedTheme);
-  themeFab.textContent = savedTheme === "dark" ? "☀️" : "🌙";
-}
-
-themeFab.onclick = () => {
-  const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
-  root.setAttribute("data-theme", next);
-  localStorage.setItem("theme", next);
-  themeFab.textContent = next === "dark" ? "☀️" : "🌙";
-};
-
-/* =========================
    REALTIME
 ========================= */
-supabase.channel("rt")
-  .on("postgres_changes",{event:"INSERT",schema:"public",table:"curhat"},loadCurhat)
-  .on("postgres_changes",{event:"INSERT",schema:"public",table:"reactions"},loadCurhat)
+supabase.channel("realtime")
+  .on("postgres_changes", { event: "INSERT", table: "curhat" }, loadCurhat)
+  .on("postgres_changes", { event: "INSERT", table: "reactions" }, loadCurhat)
   .subscribe();
 
 loadCurhat();
