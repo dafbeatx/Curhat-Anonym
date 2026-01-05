@@ -458,3 +458,49 @@ html[data-theme="dark"] .toast {
   background: #020617;
   border: 1px solid #1e293b;
 }
+/* =========================
+   SHARE POPUP (DESKTOP)
+========================= */
+.share-popup {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+}
+
+.share-box {
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 14px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+}
+
+.share-box a,
+.share-box button {
+  all: unset;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f1f5f9;
+}
+
+.share-box button:hover,
+.share-box a:hover {
+  background: #e2e8f0;
+}
+
+html[data-theme="dark"] .share-box {
+  background: #020617;
+}
+
+html[data-theme="dark"] .share-box a,
+html[data-theme="dark"] .share-box button {
+  background: #1e293b;
+  color: #e5e7eb;
+}
