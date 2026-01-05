@@ -508,8 +508,8 @@ html[data-theme="dark"] .share-box button {
   display: flex;
   gap: 8px;
 }
-/* =========================
-   CARD ACTIONS (ICON ONLY)
+//* =========================
+   CARD ACTION ICONS
 ========================= */
 .card-actions {
   display: flex;
@@ -522,10 +522,10 @@ html[data-theme="dark"] .share-box button {
   height: 34px;
   border: none;
   background: transparent;
+  padding: 0;
   cursor: pointer;
   opacity: 0.55;
   transition: opacity .2s ease, transform .15s ease;
-  padding: 0;
 }
 
 .icon-btn:hover {
@@ -537,47 +537,34 @@ html[data-theme="dark"] .share-box button {
   transform: scale(0.95);
 }
 
-/* =========================
-   ICON MASK (HEROICONS)
-========================= */
 .icon-btn::before {
   content: "";
   display: block;
   width: 22px;
   height: 22px;
   margin: auto;
-  background-color: #64748b; /* light mode */
-  mask-size: contain;
+  background-color: #64748b;
   mask-repeat: no-repeat;
   mask-position: center;
-  -webkit-mask-size: contain;
+  mask-size: contain;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-position: center;
+  -webkit-mask-size: contain;
 }
 
-/* SHARE ICON */
+/* SHARE ICON (Heroicons - MIT) */
 .icon-btn.share::before {
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='black'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='M7.5 12h9m0 0L12 7.5M16.5 12L12 16.5'/%3E%3C/svg%3E");
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='black'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='M7.5 12h9m0 0L12 7.5M16.5 12L12 16.5'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.5 12h9M16.5 12L12 7.5M16.5 12L12 16.5'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.5 12h9M16.5 12L12 7.5M16.5 12L12 16.5'/%3E%3C/svg%3E");
 }
 
 /* IMAGE / DOWNLOAD ICON */
 .icon-btn.image::before {
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='black'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='M12 3v12m0 0l-4-4m4 4l4-4M4 21h16'/%3E%3C/svg%3E");
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='black'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='M12 3v12m0 0l-4-4m4 4l4-4M4 21h16'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v12M12 15l-4-4M12 15l4-4M4 21h16'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3v12M12 15l-4-4M12 15l4-4M4 21h16'/%3E%3C/svg%3E");
 }
 
-/* =========================
-   DARK MODE
-========================= */
+/* DARK MODE */
 html[data-theme="dark"] .icon-btn::before {
   background-color: #cbd5f5;
-}
-
-html[data-theme="dark"] .icon-btn {
-  opacity: 0.6;
-}
-
-html[data-theme="dark"] .icon-btn:hover {
-  opacity: 1;
 }
