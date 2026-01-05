@@ -14,24 +14,40 @@ const supabase = createClient(
 const textarea = document.getElementById("curhat-input");
 const sendBtn = document.getElementById("kirim");
 const list = document.getElementById("list-curhat");
+const themeFab = document.querySelector(".theme-fab");
+const root = document.documentElement;
+
+/* =========================
+   THEME (DARK / LIGHT)
+========================= */
+const savedTheme = localStorage.getItem("theme") || "light";
+root.setAttribute("data-theme", savedTheme);
+if (themeFab) themeFab.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+
+themeFab?.addEventListener("click", () => {
+  const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  root.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
+  themeFab.textContent = next === "dark" ? "☀️" : "🌙";
+});
 
 /* =========================
    EVENT
 ========================= */
-sendBtn.onclick = sendCurhat;
-textarea.onkeydown = e => {
+sendBtn.addEventListener("click", sendCurhat);
+textarea.addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     sendCurhat();
   }
-};
+});
 
 /* =========================
    AUDIO
 ========================= */
 let audioCtx;
-function playSound() {
-  if (!audioCtx) audioCtx = new AudioContext();
+function playSendSound() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.frequency.value = 220;
@@ -45,30 +61,31 @@ function playSound() {
 /* =========================
    EMOJI BAR
 ========================= */
-document.querySelectorAll(".emoji-bar button").forEach(b => {
-  b.onclick = () => {
-    textarea.value += b.textContent;
+document.querySelectorAll(".emoji-bar button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    textarea.value += btn.textContent;
     textarea.focus();
-  };
+  });
 });
 
 /* =========================
    MOOD
 ========================= */
-function detectMood(t) {
-  t = t.toLowerCase();
-  if (/anjing|bangsat|marah|emosi/.test(t)) return "marah";
-  if (/sedih|capek|nangis/.test(t)) return "sedih";
-  if (/senang|bahagia|syukur/.test(t)) return "bahagia";
+function detectMood(text) {
+  const t = text.toLowerCase();
+  if (/anjing|bangsat|emosi|marah/.test(t)) return "marah";
+  if (/sedih|capek|nangis|lelah/.test(t)) return "sedih";
+  if (/senang|bahagia|lega|syukur/.test(t)) return "bahagia";
   return "netral";
 }
-function moodMeta(m) {
+
+function moodMeta(mood) {
   return {
-    marah:{emoji:"😡",color:"#ef4444",name:"si pemarah"},
-    sedih:{emoji:"😢",color:"#3b82f6",name:"si capek hidup"},
-    bahagia:{emoji:"😄",color:"#22c55e",name:"si paling bahagia"},
-    netral:{emoji:"🙂",color:"#64748b",name:"si anonim"}
-  }[m];
+    marah:   { emoji: "😡", color: "#ef4444", name: "si pemarah" },
+    sedih:   { emoji: "😢", color: "#3b82f6", name: "si capek hidup" },
+    bahagia: { emoji: "😄", color: "#22c55e", name: "si paling bahagia" },
+    netral:  { emoji: "🙂", color: "#64748b", name: "si anonim" }
+  }[mood];
 }
 
 /* =========================
@@ -89,11 +106,11 @@ async function sendCurhat() {
   });
 
   if (error) {
-    alert("Gagal kirim");
+    alert("Gagal mengirim curhat");
     return;
   }
 
-  playSound();
+  playSendSound();
   textarea.value = "";
   loadCurhat();
 }
@@ -101,59 +118,71 @@ async function sendCurhat() {
 /* =========================
    REACTIONS
 ========================= */
-const REACT = { read:"🤍", hug:"🫂", hope:"🌱", pray:"🙏", listen:"🕯️" };
+const REACTIONS = {
+  read: "🤍",
+  hug: "🫂",
+  hope: "🌱",
+  pray: "🙏",
+  listen: "🕯️"
+};
+
 window.sendReaction = async (id, type) => {
-  if (localStorage.getItem("r_"+id)) return;
-  await supabase.from("reactions").insert({ curhat_id:id, type });
-  localStorage.setItem("r_"+id,1);
+  if (localStorage.getItem(`reacted_${id}`)) return;
+  await supabase.from("reactions").insert({ curhat_id: id, type });
+  localStorage.setItem(`reacted_${id}`, "1");
   loadCurhat();
 };
 
 /* =========================
-   LOAD + RENDER
+   LOAD & RENDER
 ========================= */
 async function loadCurhat() {
   const { data } = await supabase
     .from("curhat")
     .select("*, reactions(type)")
-    .order("created_at",{ascending:false});
-  renderCurhat(data||[]);
+    .order("created_at", { ascending: false });
+
+  renderCurhat(data || []);
 }
 
 function renderCurhat(rows) {
   list.innerHTML = "";
-  rows.forEach(r => {
-    const meta = moodMeta(r.mood);
+
+  rows.forEach(row => {
+    const meta = moodMeta(row.mood);
     const counts = {};
-    (r.reactions||[]).forEach(x=>counts[x.type]=(counts[x.type]||0)+1);
+    (row.reactions || []).forEach(r => {
+      counts[r.type] = (counts[r.type] || 0) + 1;
+    });
 
     list.innerHTML += `
-      <div class="item">
+      <div class="item" id="card-${row.id}">
         <div class="item-header">
-          <div class="avatar">${meta.emoji}</div>
+          <div class="avatar">${row.emoji}</div>
           <div>
-            <div class="name">${r.name}</div>
-            <span class="badge" style="background:${meta.color}">${r.mood}</span>
+            <div class="name">${row.name}</div>
+            <span class="badge" style="background:${meta.color}">${row.mood}</span>
           </div>
         </div>
 
-        <div class="text" id="curhat-${r.id}">${r.text}</div>
+        <div class="text" id="curhat-${row.id}">${escapeHtml(row.text)}</div>
 
         <div class="reaction-summary">
-          ${Object.entries(counts).map(([t,c])=>`${REACT[t]} ${c}`).join(" · ")}
+          ${Object.entries(counts).map(([t,c]) => `${REACTIONS[t]} ${c}`).join(" · ")}
         </div>
 
         <div class="reaction-bar">
-          ${Object.entries(REACT).map(([t,e])=>
-            `<button onclick="sendReaction('${r.id}','${t}')">${e}</button>`
-          ).join("")}
+          ${Object.entries(REACTIONS)
+            .map(([t,e]) => `<button onclick="sendReaction('${row.id}','${t}')">${e}</button>`)
+            .join("")}
         </div>
 
         <div class="card-actions">
-          <button onclick="shareLink('${r.id}')">🔗</button>
-          <button onclick="shareImage('${r.id}')">🖼️</button>
+          <button onclick="shareLink('${row.id}')">🔗</button>
+          <button onclick="shareAsImage('${row.id}')">🖼️</button>
         </div>
-      </div>`;
+      </div>
+    `;
   });
 }
 
@@ -163,7 +192,7 @@ function renderCurhat(rows) {
 window.shareLink = async id => {
   const url = `${location.origin}${location.pathname}#curhat-${id}`;
   if (navigator.share) {
-    await navigator.share({ title:"Curhat Anonim", url });
+    await navigator.share({ title: "Curhat Anonim", url });
   } else {
     await navigator.clipboard.writeText(url);
     alert("Link disalin");
@@ -171,51 +200,85 @@ window.shareLink = async id => {
 };
 
 /* =========================
-   SHARE IMAGE (CANVAS)
+   SHARE AS IMAGE (PRESISI)
 ========================= */
-window.shareImage = async id => {
-  const el = document.getElementById("curhat-"+id);
-  if (!el) return;
+window.shareAsImage = async id => {
+  const card = document.getElementById(`card-${id}`);
+  if (!card) return;
 
-  const c = document.createElement("canvas");
-  const ctx = c.getContext("2d");
-  c.width = 520;
-  c.height = 360;
+  const text = card.querySelector(".text").innerText;
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  const width = 560;
+  const padding = 32;
+  const lineHeight = 26;
+  const fontSize = 16;
+
+  ctx.font = `${fontSize}px Inter, sans-serif`;
+
+  // word wrap
+  const words = text.split(" ");
+  let lines = [];
+  let line = "";
+
+  words.forEach(w => {
+    const test = line + w + " ";
+    if (ctx.measureText(test).width > width - padding * 2) {
+      lines.push(line);
+      line = w + " ";
+    } else line = test;
+  });
+  lines.push(line);
+
+  const height = padding * 2 + lines.length * lineHeight + 48;
+  canvas.width = width;
+  canvas.height = height;
+
+  // background (match dark card)
   ctx.fillStyle = "#020617";
-  ctx.fillRect(0,0,c.width,c.height);
-  ctx.fillStyle = "#fff";
-  ctx.font = "16px Inter";
-  wrapText(ctx, el.innerText, 30, 60, 460, 26);
-  ctx.font = "12px Inter";
-  ctx.fillText("Curhat Anonim",30,c.height-20);
+  ctx.fillRect(0, 0, width, height);
 
-  const url = c.toDataURL("image/png");
+  // rounded border illusion
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.strokeRect(1, 1, width - 2, height - 2);
+
+  // text
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `${fontSize}px Inter, sans-serif`;
+  lines.forEach((l, i) => {
+    ctx.fillText(l, padding, padding + i * lineHeight);
+  });
+
+  // watermark
+  ctx.font = "12px Inter, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.fillText("Curhat Anonim", padding, height - 18);
+
+  const img = canvas.toDataURL("image/png");
+
   const a = document.createElement("a");
-  a.href = url;
+  a.href = img;
   a.download = "curhat.png";
   a.click();
 };
 
-function wrapText(ctx,text,x,y,maxW,lh){
-  text.split("\n").forEach(p=>{
-    let line="";
-    p.split(" ").forEach(w=>{
-      const t=line+w+" ";
-      if(ctx.measureText(t).width>maxW){
-        ctx.fillText(line,x,y);
-        line=w+" "; y+=lh;
-      } else line=t;
-    });
-    ctx.fillText(line,x,y); y+=lh;
-  });
+/* =========================
+   UTILS
+========================= */
+function escapeHtml(text) {
+  const d = document.createElement("div");
+  d.textContent = text;
+  return d.innerHTML;
 }
 
 /* =========================
    REALTIME
 ========================= */
-supabase.channel("rt")
-  .on("postgres_changes",{event:"INSERT",table:"curhat"},loadCurhat)
-  .on("postgres_changes",{event:"INSERT",table:"reactions"},loadCurhat)
+supabase.channel("realtime")
+  .on("postgres_changes", { event: "INSERT", table: "curhat" }, loadCurhat)
+  .on("postgres_changes", { event: "INSERT", table: "reactions" }, loadCurhat)
   .subscribe();
 
 loadCurhat();
