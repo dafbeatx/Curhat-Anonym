@@ -16,25 +16,22 @@ const sendBtn = document.getElementById("kirim");
 const list = document.getElementById("list-curhat");
 
 /* =========================
-   EVENT BINDING
+   EVENT
 ========================= */
-sendBtn.addEventListener("click", sendCurhat);
-textarea.addEventListener("keydown", e => {
+sendBtn.onclick = sendCurhat;
+textarea.onkeydown = e => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     sendCurhat();
   }
-});
+};
 
 /* =========================
    AUDIO
 ========================= */
 let audioCtx;
-function initAudio() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === "suspended") audioCtx.resume();
-}
 function playSound() {
+  if (!audioCtx) audioCtx = new AudioContext();
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.frequency.value = 220;
@@ -48,10 +45,9 @@ function playSound() {
 /* =========================
    EMOJI BAR
 ========================= */
-document.querySelectorAll(".emoji-bar button").forEach(btn => {
-  btn.onclick = () => {
-    initAudio();
-    textarea.value += btn.textContent;
+document.querySelectorAll(".emoji-bar button").forEach(b => {
+  b.onclick = () => {
+    textarea.value += b.textContent;
     textarea.focus();
   };
 });
@@ -59,74 +55,77 @@ document.querySelectorAll(".emoji-bar button").forEach(btn => {
 /* =========================
    MOOD
 ========================= */
-function detectMood(text) {
-  const t = text.toLowerCase();
+function detectMood(t) {
+  t = t.toLowerCase();
   if (/anjing|bangsat|marah|emosi/.test(t)) return "marah";
   if (/sedih|capek|nangis/.test(t)) return "sedih";
   if (/senang|bahagia|syukur/.test(t)) return "bahagia";
   return "netral";
 }
-function moodMeta(mood) {
+function moodMeta(m) {
   return {
-    marah: { emoji: "😡", color: "#ef4444", name: "si pemarah" },
-    sedih: { emoji: "😢", color: "#3b82f6", name: "si capek hidup" },
-    bahagia: { emoji: "😄", color: "#22c55e", name: "si paling bahagia" },
-    netral: { emoji: "🙂", color: "#64748b", name: "si anonim" }
-  }[mood];
+    marah:{emoji:"😡",color:"#ef4444",name:"si pemarah"},
+    sedih:{emoji:"😢",color:"#3b82f6",name:"si capek hidup"},
+    bahagia:{emoji:"😄",color:"#22c55e",name:"si paling bahagia"},
+    netral:{emoji:"🙂",color:"#64748b",name:"si anonim"}
+  }[m];
 }
 
 /* =========================
    SEND CURHAT
 ========================= */
 async function sendCurhat() {
-  initAudio();
   const text = textarea.value.trim();
   if (!text) return;
 
   const mood = detectMood(text);
   const meta = moodMeta(mood);
 
-  await supabase.from("curhat").insert({
+  const { error } = await supabase.from("curhat").insert({
     text,
     mood,
     emoji: meta.emoji,
     name: meta.name
   });
 
+  if (error) {
+    alert("Gagal kirim");
+    return;
+  }
+
   playSound();
   textarea.value = "";
-  loadCurhat(); // optimistic refresh
+  loadCurhat();
 }
 
 /* =========================
    REACTIONS
 ========================= */
-const REACTION_MAP = { read:"🤍", hug:"🫂", hope:"🌱", pray:"🙏", listen:"🕯️" };
+const REACT = { read:"🤍", hug:"🫂", hope:"🌱", pray:"🙏", listen:"🕯️" };
 window.sendReaction = async (id, type) => {
-  if (localStorage.getItem(`reacted_${id}`)) return;
+  if (localStorage.getItem("r_"+id)) return;
   await supabase.from("reactions").insert({ curhat_id:id, type });
-  localStorage.setItem(`reacted_${id}`, 1);
+  localStorage.setItem("r_"+id,1);
   loadCurhat();
 };
 
 /* =========================
-   LOAD & RENDER
+   LOAD + RENDER
 ========================= */
 async function loadCurhat() {
   const { data } = await supabase
     .from("curhat")
     .select("*, reactions(type)")
-    .order("created_at", { ascending:false });
-  renderCurhat(data || []);
+    .order("created_at",{ascending:false});
+  renderCurhat(data||[]);
 }
 
 function renderCurhat(rows) {
   list.innerHTML = "";
   rows.forEach(r => {
     const meta = moodMeta(r.mood);
-    const reacted = localStorage.getItem(`reacted_${r.id}`);
     const counts = {};
-    (r.reactions||[]).forEach(x => counts[x.type]=(counts[x.type]||0)+1);
+    (r.reactions||[]).forEach(x=>counts[x.type]=(counts[x.type]||0)+1);
 
     list.innerHTML += `
       <div class="item">
@@ -141,190 +140,82 @@ function renderCurhat(rows) {
         <div class="text" id="curhat-${r.id}">${r.text}</div>
 
         <div class="reaction-summary">
-          ${Object.entries(counts).map(([t,c])=>`${REACTION_MAP[t]} ${c}`).join(" · ")}
+          ${Object.entries(counts).map(([t,c])=>`${REACT[t]} ${c}`).join(" · ")}
         </div>
 
-        ${reacted?"":`
         <div class="reaction-bar">
-          ${Object.entries(REACTION_MAP).map(([t,e])=>
+          ${Object.entries(REACT).map(([t,e])=>
             `<button onclick="sendReaction('${r.id}','${t}')">${e}</button>`
           ).join("")}
-        </div>`}
+        </div>
 
-<div class="card-actions">
-  <button class="share-btn" onclick="shareCurhat('${row.id}')">🔗 Bagikan</button>
-  <button class="share-btn" onclick="shareAsImage('${row.id}')">🖼️ Gambar</button>
-</div>
+        <div class="card-actions">
+          <button onclick="shareLink('${r.id}')">🔗</button>
+          <button onclick="shareImage('${r.id}')">🖼️</button>
+        </div>
       </div>`;
   });
 }
 
-async function shareCurhat(id) {
+/* =========================
+   SHARE LINK
+========================= */
+window.shareLink = async id => {
   const url = `${location.origin}${location.pathname}#curhat-${id}`;
-  const text = encodeURIComponent("Curhatan anonim yang mungkin relate.");
-async function shareAsImage(curhatId) {
-  const el = document.getElementById(`curhat-${curhatId}`);
-  if (!el) return alert("Curhat tidak ditemukan");
-
-  const text = el.innerText.trim();
-
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-
-  // ukuran canvas
-  const padding = 40;
-  const maxWidth = 520;
-  const lineHeight = 26;
-  const fontSize = 16;
-  const font = `${fontSize}px Inter, sans-serif`;
-
-  ctx.font = font;
-
-  // word wrap
-  const words = text.split(" ");
-  let lines = [];
-  let line = "";
-
-  words.forEach(word => {
-    const test = line + word + " ";
-    if (ctx.measureText(test).width > maxWidth - padding * 2) {
-      lines.push(line);
-      line = word + " ";
-    } else {
-      line = test;
-    }
-  });
-  lines.push(line);
-
-  const height =
-    padding * 2 +
-    lines.length * lineHeight +
-    50;
-
-  canvas.width = maxWidth;
-  canvas.height = height;
-
-  // background
-  ctx.fillStyle = "#020617";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // subtle grid
-  ctx.strokeStyle = "rgba(255,255,255,0.05)";
-  for (let i = 0; i < canvas.width; i += 32) {
-    ctx.beginPath();
-    ctx.moveTo(i, 0);
-    ctx.lineTo(i, canvas.height);
-    ctx.stroke();
-  }
-  for (let i = 0; i < canvas.height; i += 32) {
-    ctx.beginPath();
-    ctx.moveTo(0, i);
-    ctx.lineTo(canvas.width, i);
-    ctx.stroke();
-  }
-
-  // text
-  ctx.fillStyle = "#ffffff";
-  ctx.font = font;
-
-  lines.forEach((l, i) => {
-    ctx.fillText(l, padding, padding + i * lineHeight);
-  });
-
-  // watermark
-  ctx.font = "12px Inter, sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.6)";
-  ctx.fillText(
-    "Curhat Anonim",
-    padding,
-    canvas.height - 20
-  );
-
-  const imageUrl = canvas.toDataURL("image/png");
-
-  // share / download
-  if (navigator.share && navigator.canShare) {
-    const blob = await (await fetch(imageUrl)).blob();
-    const file = new File([blob], "curhat.png", { type: "image/png" });
-
-    if (navigator.canShare({ files: [file] })) {
-      await navigator.share({
-        files: [file],
-        title: "Curhat Anonim"
-      });
-      return;
-    }
-  }
-
-  // fallback: download
-  const a = document.createElement("a");
-  a.href = imageUrl;
-  a.download = "curhat.png";
-  a.click();
-}
-
-window.shareAsImage = shareAsImage;
-
-  // MOBILE SHARE (Android / iOS)
-  if (navigator.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
-    try {
-      await navigator.share({
-        title: "Curhat Anonim",
-        text: "Curhatan anonim yang mungkin relate.",
-        url
-      });
-      return;
-    } catch {
-      // user cancel
-    }
-  }
-
-  // DESKTOP FALLBACK (SELALU KELIATAN)
-  const popup = document.createElement("div");
-  popup.className = "share-popup";
-  popup.innerHTML = `
-    <div class="share-box">
-      <p>Bagikan curhatan ini</p>
-      <a href="https://wa.me/?text=${text}%20${encodeURIComponent(url)}" target="_blank">WhatsApp</a>
-      <a href="https://t.me/share/url?url=${encodeURIComponent(url)}&text=${text}" target="_blank">Telegram</a>
-      <a href="https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${text}" target="_blank">X / Twitter</a>
-      <button id="copy-link">Salin Link</button>
-      <button id="close-share">Tutup</button>
-    </div>
-  `;
-  document.body.appendChild(popup);
-
-  document.getElementById("copy-link").onclick = async () => {
+  if (navigator.share) {
+    await navigator.share({ title:"Curhat Anonim", url });
+  } else {
     await navigator.clipboard.writeText(url);
     alert("Link disalin");
-  };
-
-  document.getElementById("close-share").onclick = () => popup.remove();
-}
-
-window.shareCurhat = shareCurhat;
-
+  }
+};
 
 /* =========================
-   THEME
+   SHARE IMAGE (CANVAS)
 ========================= */
-const fab = document.querySelector(".theme-fab");
-const root = document.documentElement;
-const saved = localStorage.getItem("theme");
-if (saved) root.dataset.theme = saved;
+window.shareImage = async id => {
+  const el = document.getElementById("curhat-"+id);
+  if (!el) return;
 
-fab.onclick = () => {
-  const next = root.dataset.theme === "dark" ? "light" : "dark";
-  root.dataset.theme = next;
-  localStorage.setItem("theme", next);
+  const c = document.createElement("canvas");
+  const ctx = c.getContext("2d");
+  c.width = 520;
+  c.height = 360;
+  ctx.fillStyle = "#020617";
+  ctx.fillRect(0,0,c.width,c.height);
+  ctx.fillStyle = "#fff";
+  ctx.font = "16px Inter";
+  wrapText(ctx, el.innerText, 30, 60, 460, 26);
+  ctx.font = "12px Inter";
+  ctx.fillText("Curhat Anonim",30,c.height-20);
+
+  const url = c.toDataURL("image/png");
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "curhat.png";
+  a.click();
 };
+
+function wrapText(ctx,text,x,y,maxW,lh){
+  text.split("\n").forEach(p=>{
+    let line="";
+    p.split(" ").forEach(w=>{
+      const t=line+w+" ";
+      if(ctx.measureText(t).width>maxW){
+        ctx.fillText(line,x,y);
+        line=w+" "; y+=lh;
+      } else line=t;
+    });
+    ctx.fillText(line,x,y); y+=lh;
+  });
+}
 
 /* =========================
    REALTIME
 ========================= */
 supabase.channel("rt")
-  .on("postgres_changes",{event:"INSERT",schema:"public",table:"curhat"},loadCurhat)
-  .on("postgres_changes",{event:"INSERT",schema:"public",table:"reactions"},loadCurhat)
+  .on("postgres_changes",{event:"INSERT",table:"curhat"},loadCurhat)
+  .on("postgres_changes",{event:"INSERT",table:"reactions"},loadCurhat)
   .subscribe();
 
 loadCurhat();
