@@ -259,7 +259,47 @@ function downloadBlob(blob) {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+async function shareCardAsImage(cardId) {
+  const card = document.getElementById(`card-${cardId}`);
+  if (!card) return;
 
+  // clone card supaya ga ganggu UI
+  const clone = card.cloneNode(true);
+  clone.style.position = "fixed";
+  clone.style.left = "-9999px";
+  clone.style.top = "0";
+  clone.style.width = card.offsetWidth + "px";
+
+  document.body.appendChild(clone);
+
+  // render pakai html2canvas
+  const canvas = await html2canvas(clone, {
+    backgroundColor: null,
+    scale: 2,
+    useCORS: true
+  });
+
+  document.body.removeChild(clone);
+
+  canvas.toBlob(async blob => {
+    const file = new File([blob], "curhat.png", { type: "image/png" });
+
+    // mobile share (WhatsApp, IG, dll)
+    if (navigator.share && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: "Curhat Anonim"
+      });
+    } else {
+      // fallback download
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "curhat.png";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+  });
+}
 /* =========================
    THEME
 ========================= */
