@@ -212,7 +212,16 @@ function renderCurhat(data) {
         </div>
       </div>
 
-      <div class="text">${escapeHtml(row.text)}</div>
+      <div class="text" id="curhat-${row.id}">
+  ${escapeHtml(row.text)}
+</div>
+
+<div class="card-actions">
+  <button class="share-btn" onclick="shareCurhat('${row.id}')">
+    🔗 Bagikan
+  </button>
+</div>
+
 
       <div class="reaction-summary">
         ${Object.entries(counts)
@@ -257,6 +266,36 @@ supabase
   .subscribe();
 
 /* =========================
+   SHARE CURHAT
+========================= */
+async function shareCurhat(id) {
+  const url = `${location.origin}${location.pathname}#curhat-${id}`;
+  const text = "Curhatan anonim yang mungkin relate.";
+
+  // Web Share API (HP / modern browser)
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: "Curhat Anonim",
+        text,
+        url
+      });
+    } catch (e) {
+      // user batal, diemin
+    }
+    return;
+  }
+
+  // Fallback: copy link
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast("Link disalin");
+  } catch {
+    alert("Gagal menyalin link");
+  }
+}
+
+/* =========================
    INIT
 ========================= */
 loadCurhat();
@@ -283,3 +322,15 @@ themeFab.addEventListener("click", () => {
 
   themeFab.textContent = next === "dark" ? "☀️" : "🌙";
 });
+function showToast(msg) {
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+
+  setTimeout(() => toast.classList.add("show"), 10);
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 300);
+  }, 1800);
+}

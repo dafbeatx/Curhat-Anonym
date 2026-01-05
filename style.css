@@ -405,3 +405,56 @@ html[data-theme="dark"] body {
     linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
   background-size: 32px 32px;
 }
+/* =========================
+   CARD ACTIONS (SHARE)
+========================= */
+.card-actions {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.share-btn {
+  all: unset;
+  font-size: 12px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: opacity .15s ease, transform .15s ease;
+}
+
+.share-btn:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+html[data-theme="dark"] .share-btn {
+  color: #cbd5f5;
+}
+
+/* =========================
+   TOAST
+========================= */
+.toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.95);
+  background: #111827;
+  color: #ffffff;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity .2s ease, transform .2s ease;
+  z-index: 9999;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+html[data-theme="dark"] .toast {
+  background: #020617;
+  border: 1px solid #1e293b;
+}
