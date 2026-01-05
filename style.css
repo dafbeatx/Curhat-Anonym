@@ -384,3 +384,24 @@ html[data-theme="dark"] .theme-fab {
     bottom: 108px;
   }
 }
+/* =========================
+   GRID BACKGROUND (SUBTLE)
+========================= */
+
+/* LIGHT MODE */
+html:not([data-theme="dark"]) body {
+  background-color: #f6f7f9;
+  background-image:
+    linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* DARK MODE */
+html[data-theme="dark"] body {
+  background-color: #020617;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
