@@ -91,8 +91,7 @@ export default function Home() {
     if (!sb) return;
 
     try {
-      const { data, error } = await sb
-        .from("curhat")
+      const { data, error } = await (sb.from("curhat") as any)
         .select("*, reactions(type)")
         .order("created_at", { ascending: false });
 
@@ -142,7 +141,7 @@ export default function Home() {
     const mood = detectMood(trimmed);
     const meta = moodMeta(mood);
 
-    const { error } = await sb.from("curhat").insert({
+    const { error } = await (sb.from("curhat") as any).insert({
       text: trimmed,
       mood,
       emoji: meta.emoji,
@@ -164,7 +163,7 @@ export default function Home() {
     const sb = getSupabase();
     if (!sb) return;
 
-    const { error } = await sb.from("reactions").insert({ curhat_id: id, type });
+    const { error } = await (sb.from("reactions") as any).insert({ curhat_id: id, type });
     if (!error) {
       localStorage.setItem(`reacted_${id}`, "1");
       loadCurhats();
