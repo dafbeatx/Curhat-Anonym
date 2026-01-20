@@ -81,11 +81,8 @@ function detectMood(text) {
 
 function moodMeta(mood) {
   return {
-    marah:   { emoji: "😡", color: "#ef4444", name: "si pemarah" },
-    sedih:   { emoji: "😢", color: "#3b82f6", name: "si capek hidup" },
-    bahagia: { emoji: "😄", color: "#22c55e", name: "si paling bahagia" },
-    netral:  { emoji: "🙂", color: "#64748b", name: "si anonim" }
-  }[mood];
+    netral: { emoji: "🙂", color: "#64748b", name: "si anonim" }
+  }[mood] || { emoji: "😶", color: "#94a3b8", name: "si anonim" };
 }
 
 /* =========================
@@ -137,52 +134,69 @@ window.sendReaction = async (id, type) => {
    LOAD & RENDER
 ========================= */
 async function loadCurhat() {
-  const { data } = await supabase
-    .from("curhat")
-    .select("*, reactions(type)")
-    .order("created_at", { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from("curhat")
+      .select("*, reactions(type)")
+      .order("created_at", { ascending: false });
 
-  renderCurhat(data || []);
+    if (error) throw error;
+    renderCurhat(data || []);
+  } catch (err) {
+    console.error("Load failed:", err);
+    list.innerHTML = `<div class="error-state">Gagal memuat curhatan. Pastikan koneksi internet stabil.</div>`;
+  }
 }
 
 function renderCurhat(rows) {
   list.innerHTML = "";
 
+  if (rows.length === 0) {
+    list.innerHTML = `<div class="empty-state">Belum ada curhatan. Jadi yang pertama bercerita!</div>`;
+    return;
+  }
+
   rows.forEach(row => {
     const meta = moodMeta(row.mood);
     const counts = {};
     (row.reactions || []).forEach(r => {
-      counts[r.type] = (counts[r.type] || 0) + 1;
+      if (r && r.type) {
+        counts[r.type] = (counts[r.type] || 0) + 1;
+      }
     });
 
-    list.innerHTML += `
-      <div class="item" id="card-${row.id}">
-        <div class="item-header">
-          <div class="avatar">${row.emoji}</div>
-          <div>
-            <div class="name">${row.name}</div>
-            <span class="badge" style="background:${meta.color}">${row.mood}</span>
-          </div>
-        </div>
-
-        <div class="text" id="curhat-${row.id}">${escapeHtml(row.text)}</div>
-
-        <div class="reaction-summary">
-          ${Object.entries(counts).map(([t,c]) => `${REACTIONS[t]} ${c}`).join(" · ")}
-        </div>
-
-        <div class="reaction-bar">
-          ${Object.entries(REACTIONS)
-            .map(([t,e]) => `<button onclick="sendReaction('${row.id}','${t}')">${e}</button>`)
-            .join("")}
-        </div>
-
-        <div class="card-actions">
-          <button class="icon-btn share" onclick="shareLink('${row.id}')"></button>
-          <button class="icon-btn image" onclick="shareAsImage('${row.id}')"></button>
+    const item = document.createElement("div");
+    item.className = "item";
+    item.id = `card-${row.id}`;
+    item.innerHTML = `
+      <div class="item-header">
+        <div class="avatar">${row.emoji || "😶"}</div>
+        <div>
+          <div class="name">${row.name || "Anonim"}</div>
+          <span class="badge" style="background:${meta.color}">${row.mood || "netral"}</span>
         </div>
       </div>
+
+      <div class="text" id="curhat-${row.id}">${escapeHtml(row.text || "")}</div>
+
+      <div class="reaction-summary">
+        ${Object.entries(counts).length > 0
+        ? Object.entries(counts).map(([t, c]) => `${REACTIONS[t] || t} ${c}`).join(" · ")
+        : "Belum ada reaksi"}
+      </div>
+
+      <div class="reaction-bar">
+        ${Object.entries(REACTIONS)
+        .map(([t, e]) => `<button onclick="sendReaction('${row.id}','${t}')" title="${t}">${e}</button>`)
+        .join("")}
+      </div>
+
+      <div class="card-actions">
+        <button class="icon-btn share" onclick="shareLink('${row.id}')" title="Salin Link">🔗</button>
+        <button class="icon-btn image" onclick="shareAsImage('${row.id}')" title="Simpan Gambar">🖼️</button>
+      </div>
     `;
+    list.appendChild(item);
   });
 }
 
