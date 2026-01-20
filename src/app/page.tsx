@@ -62,13 +62,13 @@ export default function Home() {
     const channel = supabase
       .channel("realtime-curhat")
       .on(
-        "postgres_changes",
-        { event: "*", table: "curhat" },
+        "postgres_changes" as any,
+        { event: "*", table: "curhat", schema: "public" },
         () => loadCurhats()
       )
       .on(
-        "postgres_changes",
-        { event: "*", table: "reactions" },
+        "postgres_changes" as any,
+        { event: "*", table: "reactions", schema: "public" },
         () => loadCurhats()
       )
       .subscribe();
