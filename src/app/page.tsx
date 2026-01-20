@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { getSupabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
 /* =========================
-   MOOD & REACTION CONSTANTS
+   CONSTANTS
 ========================= */
 const REACTIONS: Record<string, string> = {
   read: "🤍",
@@ -16,23 +16,25 @@ const REACTIONS: Record<string, string> = {
   listen: "🕯️",
 };
 
-function detectMood(text: string) {
-  const t = text.toLowerCase();
-  if (/anjing|bangsat|emosi|marah/.test(t)) return "marah";
-  if (/sedih|capek|nangis|lelah/.test(t)) return "sedih";
-  if (/senang|bahagia|lega|syukur/.test(t)) return "bahagia";
-  return "netral";
-}
+const MOOD_META: Record<string, { emoji: string; color: string; label: string }> = {
+  marah: { emoji: "😡", color: "#ef4444", label: "Marah" },
+  sedih: { emoji: "😢", color: "#3b82f6", label: "Sedih" },
+  bahagia: { emoji: "😄", color: "#22c55e", label: "Bahagia" },
+  lelah: { emoji: "😫", color: "#6366f1", label: "Lelah" },
+  kecewa: { emoji: "😕", color: "#f59e0b", label: "Kecewa" },
+  netral: { emoji: "🙂", color: "#64748b", label: "Netral" },
+};
 
-function moodMeta(mood: string) {
-  const meta: Record<string, { emoji: string; color: string; name: string }> = {
-    marah: { emoji: "😡", color: "#ef4444", name: "si pemarah" },
-    sedih: { emoji: "😢", color: "#3b82f6", name: "si capek hidup" },
-    bahagia: { emoji: "😄", color: "#22c55e", name: "si paling bahagia" },
-    netral: { emoji: "🙂", color: "#64748b", name: "si anonim" },
-  };
-  return meta[mood] || { emoji: "😶", color: "#94a3b8", name: "si anonim" };
-}
+const ENCOURAGEMENTS = [
+  "Kamu tidak sendirian. 🫂",
+  "Terima kasih sudah jujur dengan perasaanmu. ✨",
+  "Napas yang dalam, semua akan baik-baik saja. 🌱",
+  "Perasaanmu valid, dan kamu berhak didengar. 🕯️",
+  "Hari esok adalah kesempatan baru. ☀️",
+  "Kamu sudah berjuang sejauh ini, bangga padamu! 🤍",
+];
+
+const FILTERS = ["Semua", "Bahagia", "Sedih", "Marah", "Lelah", "Kecewa", "Netral"];
 
 interface CurhatItem {
   id: string;
@@ -44,16 +46,24 @@ interface CurhatItem {
   reactions: { type: string }[];
 }
 
+interface Toast {
+  id: number;
+  message: string;
+  type: "success" | "error" | "info";
+}
+
 export default function Home() {
   const [text, setText] = useState("");
   const [curhats, setCurhats] = useState<CurhatItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState("light");
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [filter, setFilter] = useState("Semua");
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
-    // Initial theme
     const savedTheme = localStorage.getItem("theme") || "light";
     setTheme(savedTheme);
     document.documentElement.setAttribute("data-theme", savedTheme);
@@ -66,19 +76,10 @@ export default function Home() {
 
     loadCurhats();
 
-    // Realtime subscription
     const channel = sb
       .channel("realtime-curhat")
-      .on(
-        "postgres_changes" as any,
-        { event: "*", table: "curhat", schema: "public" },
-        () => loadCurhats()
-      )
-      .on(
-        "postgres_changes" as any,
-        { event: "*", table: "reactions", schema: "public" },
-        () => loadCurhats()
-      )
+      .on("postgres_changes" as any, { event: "*", table: "curhat", schema: "public" }, () => loadCurhats())
+      .on("postgres_changes" as any, { event: "*", table: "reactions", schema: "public" }, () => loadCurhats())
       .subscribe();
 
     return () => {
@@ -106,6 +107,14 @@ export default function Home() {
     }
   };
 
+  const addToast = (message: string, type: "success" | "error" | "info" = "info") => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
+
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
@@ -118,57 +127,101 @@ export default function Home() {
       audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     const ctx = audioCtxRef.current;
+    if (ctx.state === "suspended") ctx.resume();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.frequency.value = 220;
-    gain.gain.value = 0.12;
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start();
-    osc.stop(ctx.currentTime + 0.12);
+    osc.stop(ctx.currentTime + 0.2);
+  };
+
+  const detectMood = (text: string) => {
+    const t = text.toLowerCase();
+    if (/anjing|bangsat|emosi|marah|benci/.test(t)) return "marah";
+    if (/sedih|capek|nangis|lelah|hancur/.test(t)) return "sedih";
+    if (/senang|bahagia|lega|syukur|mantap/.test(t)) return "bahagia";
+    if (/kecewa|bohong|jahat|php/.test(t)) return "kecewa";
+    if (/lelah|letih|lesu|malas/.test(t)) return "lelah";
+    return "netral";
   };
 
   const sendCurhat = async () => {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed || sending) return;
 
-    const sb = getSupabase();
-    if (!sb) {
-      alert("Koneksi ke database gagal. Periksa konfigurasi API.");
+    // Anti-spam check (60 seconds)
+    const lastPost = localStorage.getItem("last_post_time");
+    const now = Date.now();
+    if (lastPost && now - parseInt(lastPost) < 60000) {
+      const wait = Math.ceil((60000 - (now - parseInt(lastPost))) / 1000);
+      addToast(`Tunggu ${wait} detik lagi ya untuk curhat kembali. 🧊`, "info");
       return;
     }
 
+    const sb = getSupabase();
+    if (!sb) {
+      addToast("Koneksi ke database gagal. Periksa konfigurasi API.", "error");
+      return;
+    }
+
+    setSending(true);
     const mood = detectMood(trimmed);
-    const meta = moodMeta(mood);
+    const meta = MOOD_META[mood] || MOOD_META.netral;
 
     const { error } = await (sb.from("curhat") as any).insert({
       text: trimmed,
       mood,
       emoji: meta.emoji,
-      name: meta.name,
+      name: "Anonim",
     });
 
+    setSending(false);
+
     if (error) {
-      alert("Gagal mengirim curhat");
+      addToast("Gagal mengirim curhat. Coba lagi nanti.", "error");
       return;
     }
 
     playSendSound();
     setText("");
+    localStorage.setItem("last_post_time", now.toString());
+
+    const msg = ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
+    addToast(msg, "success");
     loadCurhats();
   };
 
   const sendReaction = async (id: string, type: string) => {
-    if (localStorage.getItem(`reacted_${id}`)) return;
+    if (localStorage.getItem(`reacted_${id}_${type}`)) {
+      addToast("Kamu sudah memberikan reaksi ini. 🤍", "info");
+      return;
+    }
+
     const sb = getSupabase();
     if (!sb) return;
 
     const { error } = await (sb.from("reactions") as any).insert({ curhat_id: id, type });
     if (!error) {
-      localStorage.setItem(`reacted_${id}`, "1");
-      loadCurhats();
+      localStorage.setItem(`reacted_${id}_${type}`, "1");
+      // Local state update for instant feedback
+      setCurhats(prev => prev.map(c => {
+        if (c.id === id) {
+          return { ...c, reactions: [...c.reactions, { type }] };
+        }
+        return c;
+      }));
     }
   };
+
+  const filteredCurhats = useMemo(() => {
+    if (filter === "Semua") return curhats;
+    return curhats.filter(c => (c.mood || "netral").toLowerCase() === filter.toLowerCase());
+  }, [curhats, filter]);
 
   const shareLink = async (id: string) => {
     const url = `${window.location.origin}${window.location.pathname}#card-${id}`;
@@ -176,7 +229,7 @@ export default function Home() {
       await navigator.share({ title: "Curhat Anonim", url });
     } else {
       await navigator.clipboard.writeText(url);
-      alert("Link disalin");
+      addToast("Link berhasil disalin ke clipboard! 🔗", "success");
     }
   };
 
@@ -192,10 +245,10 @@ export default function Home() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const width = 560;
-    const padding = 32;
-    const lineHeight = 26;
-    const fontSize = 16;
+    const width = 600;
+    const padding = 40;
+    const lineHeight = 28;
+    const fontSize = 18;
 
     ctx.font = `${fontSize}px Inter, sans-serif`;
 
@@ -212,38 +265,45 @@ export default function Home() {
     });
     lines.push(line);
 
-    const height = padding * 2 + lines.length * lineHeight + 48;
+    const height = padding * 2 + lines.length * lineHeight + 60;
     canvas.width = width;
     canvas.height = height;
 
-    if (currentTheme === "dark") {
-      ctx.fillStyle = "#020617";
-      ctx.fillRect(0, 0, width, height);
-      ctx.fillStyle = "#ffffff";
-    } else {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, width, height);
-      ctx.fillStyle = "#020617";
-    }
+    // Background
+    ctx.fillStyle = currentTheme === "dark" ? "#0f172a" : "#ffffff";
+    ctx.fillRect(0, 0, width, height);
 
+    // Text
+    ctx.fillStyle = currentTheme === "dark" ? "#f8fafc" : "#1e293b";
     ctx.font = `${fontSize}px Inter, sans-serif`;
     lines.forEach((l, i) => {
-      ctx.fillText(l, padding, padding + i * lineHeight + fontSize);
+      ctx.fillText(l.trim(), padding, padding + i * lineHeight + fontSize);
     });
 
-    ctx.font = "12px Inter, sans-serif";
-    ctx.globalAlpha = 0.6;
-    ctx.fillText("Curhat Anonim", padding, height - 18);
+    // Brand
+    ctx.font = "14px Inter, sans-serif";
+    ctx.fillStyle = "#64748b";
+    ctx.fillText("🎭 Curhat Anonim", padding, height - 20);
 
     const img = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = img;
-    a.download = "curhat.png";
+    a.download = `curhat-${id.substring(0, 5)}.png`;
     a.click();
+    addToast("Gambar berhasil disimpan! 🖼️", "success");
   };
 
   return (
     <div className="page">
+      {/* TOAST SYSTEM */}
+      <div className="toast-container">
+        {toasts.map((t) => (
+          <div key={t.id} className={`toast ${t.type}`}>
+            {t.message}
+          </div>
+        ))}
+      </div>
+
       <main className="container">
         <header className="header">
           <div className="header-title">
@@ -257,15 +317,17 @@ export default function Home() {
 
         <section className="input-area">
           <div className="emoji-bar">
-            {["😡", "😢", "🙂", "😄", "😭"].map((emoji) => (
+            {Object.values(MOOD_META).map((m) => (
               <button
-                key={emoji}
+                key={m.emoji}
                 type="button"
                 onClick={() => {
-                  setText((prev) => prev + emoji);
+                  setText((prev) => prev + m.emoji);
+                  addToast(`Emosi ${m.label} terpilih!`, "info");
                 }}
+                title={m.label}
               >
-                {emoji}
+                {m.emoji}
               </button>
             ))}
           </div>
@@ -284,21 +346,41 @@ export default function Home() {
             }}
           ></textarea>
 
-          <button id="kirim" className="btn-primary" onClick={sendCurhat}>
-            Kirim Curhat
+          <button
+            id="kirim"
+            className="btn-primary"
+            onClick={sendCurhat}
+            disabled={sending || !text.trim()}
+          >
+            {sending ? "Mengirim..." : "Kirim Curhat"}
           </button>
         </section>
+
+        {/* FILTER BAR */}
+        <div className="filter-bar">
+          {FILTERS.map(f => (
+            <button
+              key={f}
+              className={`filter-btn ${filter === f ? 'active' : ''}`}
+              onClick={() => setFilter(f)}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
 
         <section id="list-curhat" className="list-curhat">
           {loading ? (
             <div className="empty-state">Memuat curhatan...</div>
           ) : error ? (
             <div className="error-state">{error}</div>
-          ) : curhats.length === 0 ? (
-            <div className="empty-state">Belum ada curhatan. Jadi yang pertama bercerita!</div>
+          ) : filteredCurhats.length === 0 ? (
+            <div className="empty-state">
+              {filter === "Semua" ? "Belum ada curhatan. Jadi yang pertama bercerita!" : `Belum ada curhatan berkeluh kesah ${filter.toLowerCase()}.`}
+            </div>
           ) : (
-            curhats.map((row) => {
-              const meta = moodMeta(row.mood);
+            filteredCurhats.map((row) => {
+              const meta = MOOD_META[row.mood] || MOOD_META.netral;
               const counts: Record<string, number> = {};
               (row.reactions || []).forEach((r) => {
                 if (r && r.type) {
@@ -309,37 +391,39 @@ export default function Home() {
               return (
                 <div className="item" id={`card-${row.id}`} key={row.id}>
                   <div className="item-header">
-                    <div className="avatar">{row.emoji || "😶"}</div>
-                    <div>
-                      <div className="name">{row.name || "Anonim"}</div>
-                      <span className="badge" style={{ background: meta.color }}>
-                        {row.mood || "netral"}
-                      </span>
+                    <div className="item-user">
+                      <div className="avatar">{row.emoji || "😶"}</div>
+                      <div className="name-box">
+                        <div className="name">{row.name || "Anonim"}</div>
+                      </div>
                     </div>
+                    <span className="badge" style={{ background: meta.color }}>
+                      {row.mood || "netral"}
+                    </span>
                   </div>
 
                   <div className="text" id={`curhat-${row.id}`}>
                     {row.text}
                   </div>
 
-                  <div className="reaction-summary">
-                    {Object.entries(counts).length > 0
-                      ? Object.entries(counts)
-                        .map(([t, c]) => `${REACTIONS[t] || t} ${c}`)
-                        .join(" · ")
-                      : "Belum ada reaksi"}
-                  </div>
-
-                  <div className="reaction-bar">
-                    {Object.entries(REACTIONS).map(([t, e]) => (
-                      <button
-                        key={t}
-                        onClick={() => sendReaction(row.id, t)}
-                        title={t}
-                      >
-                        {e}
-                      </button>
-                    ))}
+                  <div className="reaction-container">
+                    <div className="reaction-bar">
+                      {Object.entries(REACTIONS).map(([t, e]) => {
+                        const count = counts[t] || 0;
+                        const hasReacted = typeof window !== 'undefined' && localStorage.getItem(`reacted_${row.id}_${t}`);
+                        return (
+                          <button
+                            key={t}
+                            className={`reaction-btn ${hasReacted ? 'reacted' : ''}`}
+                            onClick={() => sendReaction(row.id, t)}
+                            title={t}
+                          >
+                            <span className="reaction-emoji">{e}</span>
+                            <span className="reaction-count">{count}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div className="card-actions">
@@ -361,13 +445,14 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="footer">
+      <footer className="footer" style={{ textAlign: 'center', padding: '20px' }}>
         <p className="footer-text">Kalau tempat ini ngebantu kamu, dukung pengembangannya</p>
         <a
           href="https://saweria.co/dafbeatx"
           target="_blank"
           rel="noopener"
           className="footer-link"
+          style={{ color: 'var(--primary)', fontWeight: 'bold', textDecoration: 'none' }}
         >
           ☕ Dukung via Saweria 🤍
         </a>
