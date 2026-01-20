@@ -356,17 +356,20 @@ export default function Home() {
           </button>
         </section>
 
-        {/* FILTER BAR */}
-        <div className="filter-bar">
-          {FILTERS.map(f => (
-            <button
-              key={f}
-              className={`filter-btn ${filter === f ? 'active' : ''}`}
-              onClick={() => setFilter(f)}
-            >
-              {f}
-            </button>
-          ))}
+        {/* FILTER BAR SECTION */}
+        <div className="filter-container">
+          <span className="filter-label">Filter Emosi</span>
+          <div className="filter-bar">
+            {FILTERS.map(f => (
+              <button
+                key={f}
+                className={`filter-btn ${filter === f ? 'active' : ''}`}
+                onClick={() => setFilter(f)}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
         </div>
 
         <section id="list-curhat" className="list-curhat">
