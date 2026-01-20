@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
+
+export const dynamic = "force-dynamic";
 
 /* =========================
    MOOD & REACTION CONSTANTS
@@ -56,10 +58,16 @@ export default function Home() {
     setTheme(savedTheme);
     document.documentElement.setAttribute("data-theme", savedTheme);
 
+    const sb = getSupabase();
+    if (!sb) {
+      setLoading(false);
+      return;
+    }
+
     loadCurhats();
 
     // Realtime subscription
-    const channel = supabase
+    const channel = sb
       .channel("realtime-curhat")
       .on(
         "postgres_changes" as any,
@@ -74,13 +82,16 @@ export default function Home() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      sb.removeChannel(channel);
     };
   }, []);
 
   const loadCurhats = async () => {
+    const sb = getSupabase();
+    if (!sb) return;
+
     try {
-      const { data, error } = await supabase
+      const { data, error } = await sb
         .from("curhat")
         .select("*, reactions(type)")
         .order("created_at", { ascending: false });
@@ -122,10 +133,16 @@ export default function Home() {
     const trimmed = text.trim();
     if (!trimmed) return;
 
+    const sb = getSupabase();
+    if (!sb) {
+      alert("Koneksi ke database gagal. Periksa konfigurasi API.");
+      return;
+    }
+
     const mood = detectMood(trimmed);
     const meta = moodMeta(mood);
 
-    const { error } = await supabase.from("curhat").insert({
+    const { error } = await sb.from("curhat").insert({
       text: trimmed,
       mood,
       emoji: meta.emoji,
@@ -144,7 +161,10 @@ export default function Home() {
 
   const sendReaction = async (id: string, type: string) => {
     if (localStorage.getItem(`reacted_${id}`)) return;
-    const { error } = await supabase.from("reactions").insert({ curhat_id: id, type });
+    const sb = getSupabase();
+    if (!sb) return;
+
+    const { error } = await sb.from("reactions").insert({ curhat_id: id, type });
     if (!error) {
       localStorage.setItem(`reacted_${id}`, "1");
       loadCurhats();
